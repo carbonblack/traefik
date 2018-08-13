@@ -165,7 +165,7 @@ func (s *Server) loadFrontendConfig(
 		if backendsHandlers[entryPointName+providerName+frontendHash] == nil {
 			log.Debugf("Creating backend %s", frontend.Backend)
 
-			handlers, responseModifier, postConfig, err := s.buildMiddlewares(frontendName, frontend, config.Backends, entryPointName, providerName)
+			handlers, responseModifier, postConfig, err := s.buildMiddlewares(frontendName, frontend, config.Backends, entryPointName, entryPoint, providerName)
 			if err != nil {
 				return nil, err
 			}

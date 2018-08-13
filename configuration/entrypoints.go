@@ -99,7 +99,7 @@ func (ep *EntryPoints) Set(value string) error {
 		WhiteList:            makeWhiteList(result),
 		ProxyProtocol:        makeEntryPointProxyProtocol(result),
 		ForwardedHeaders:     makeEntryPointForwardedHeaders(result),
-		HeHeaders:        removeHeaders,
+		RemoveHeaders:        removeHeaders,
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/containous/traefik/configuration"
 	"github.com/containous/traefik/log"
 	"github.com/containous/traefik/middlewares"
 	"github.com/containous/traefik/middlewares/accesslog"
@@ -21,7 +22,8 @@ type handlerPostConfig func(backendsHandlers map[string]http.Handler) error
 type modifyResponse func(*http.Response) error
 
 func (s *Server) buildMiddlewares(frontendName string, frontend *types.Frontend,
-	backends map[string]*types.Backend, entryPointName string, providerName string) ([]negroni.Handler, modifyResponse, handlerPostConfig, error) {
+	backends map[string]*types.Backend, entryPointName string,
+	entryPoint *configuration.EntryPoint, providerName string) ([]negroni.Handler, modifyResponse, handlerPostConfig, error) {
 
 	var middle []negroni.Handler
 	var postConfig handlerPostConfig
