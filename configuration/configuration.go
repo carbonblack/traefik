@@ -31,6 +31,7 @@ import (
 	"github.com/containous/traefik/provider/rancher"
 	"github.com/containous/traefik/provider/rest"
 	"github.com/containous/traefik/provider/zk"
+	"provider/redis"
 	"github.com/containous/traefik/tls"
 	"github.com/containous/traefik/types"
 )
@@ -106,6 +107,7 @@ type GlobalConfiguration struct {
 	Metrics                   *types.Metrics          `description:"Enable a metrics exporter" export:"true"`
 	Ping                      *ping.Handler           `description:"Enable ping" export:"true"`
 	HostResolver              *HostResolverConfig     `description:"Enable CNAME Flattening" export:"true"`
+	Redis                     *redis.Provider         `description:"Enable Redis backend with default settings" export:"true"`
 }
 
 // WebCompatibility is a configuration to handle compatibility with deprecated web provider options
