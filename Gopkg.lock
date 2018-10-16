@@ -154,7 +154,8 @@
     "store/consul",
     "store/etcd/v2",
     "store/etcd/v3",
-    "store/zookeeper"
+    "store/zookeeper",
+    "store/redis"
   ]
   revision = "063d875e3c5fd734fa2aa12fac83829f62acfc70"
 

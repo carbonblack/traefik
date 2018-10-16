@@ -29,9 +29,9 @@ import (
 	"github.com/containous/traefik/provider/marathon"
 	"github.com/containous/traefik/provider/mesos"
 	"github.com/containous/traefik/provider/rancher"
+	"github.com/containous/traefik/provider/redis"
 	"github.com/containous/traefik/provider/rest"
 	"github.com/containous/traefik/provider/zk"
-	"provider/redis"
 	"github.com/containous/traefik/tls"
 	"github.com/containous/traefik/types"
 )
