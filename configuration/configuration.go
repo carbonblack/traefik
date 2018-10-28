@@ -33,6 +33,8 @@ import (
 	"github.com/containous/traefik/provider/zk"
 	"github.com/containous/traefik/tls"
 	"github.com/containous/traefik/types"
+	"github.com/pkg/errors"
+	lego "github.com/xenolf/lego/acme"
 )
 
 const (
@@ -206,6 +208,7 @@ func (gc *GlobalConfiguration) initTracing() {
 					SameSpan:     false,
 					ID128Bit:     true,
 					Debug:        false,
+					SampleRate:   1.0,
 				}
 			}
 			if gc.Tracing.Jaeger != nil {
@@ -258,6 +261,17 @@ func (gc *GlobalConfiguration) initACMEProvider() {
 			gc.ACME.HTTPChallenge = nil
 		}
 
+		for _, domain := range gc.ACME.Domains {
+			if domain.Main != lego.UnFqdn(domain.Main) {
+				log.Warnf("FQDN detected, please remove the trailing dot: %s", domain.Main)
+			}
+			for _, san := range domain.SANs {
+				if san != lego.UnFqdn(san) {
+					log.Warnf("FQDN detected, please remove the trailing dot: %s", san)
+				}
+			}
+		}
+
 		if len(gc.ACME.DNSProvider) > 0 {
 			log.Warn("ACME.DNSProvider is deprecated, use ACME.DNSChallenge instead")
 			gc.ACME.DNSChallenge = &acmeprovider.DNSChallenge{Provider: gc.ACME.DNSProvider, DelayBeforeCheck: gc.ACME.DelayDontCheckDNS}
@@ -270,8 +284,13 @@ func (gc *GlobalConfiguration) initACMEProvider() {
 }
 
 // InitACMEProvider create an acme provider from the ACME part of globalConfiguration
-func (gc *GlobalConfiguration) InitACMEProvider() *acmeprovider.Provider {
+func (gc *GlobalConfiguration) InitACMEProvider() (*acmeprovider.Provider, error) {
 	if gc.ACME != nil {
+		if len(gc.ACME.Storage) == 0 {
+			// Delete the ACME configuration to avoid starting ACME in cluster mode
+			gc.ACME = nil
+			return nil, errors.New("unable to initialize ACME provider with no storage location for the certificates")
+		}
 		// TODO: Remove when Provider ACME will replace totally ACME
 		// If provider file, use Provider ACME instead of ACME
 		if gc.Cluster == nil {
@@ -295,10 +314,10 @@ func (gc *GlobalConfiguration) InitACMEProvider() *acmeprovider.Provider {
 			provider.Store = store
 			acme.ConvertToNewFormat(provider.Storage)
 			gc.ACME = nil
-			return provider
+			return provider, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func getSafeACMECAServer(caServerSrc string) string {

@@ -53,11 +53,7 @@ func (s *Server) buildMiddlewares(frontendName string, frontend *types.Frontend,
 		return nil, nil, nil, fmt.Errorf("error creating IP Whitelister: %s", err)
 	}
 	if ipWhitelistMiddleware != nil {
-		if frontend.WhiteList != nil {
-			log.Debugf("Configured IP Whitelists: %v", frontend.WhiteList.SourceRange)
-		} else {
-			log.Debugf("Configured IP Whitelists: %v", frontend.WhitelistSourceRange)
-		}
+		log.Debugf("Configured IP Whitelists: %v", frontend.WhiteList.SourceRange)
 
 		handler := s.tracingMiddleware.NewNegroniHandlerWrapper(
 			"IP whitelist",
