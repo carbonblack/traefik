@@ -162,6 +162,11 @@ var _templatesConsul_catalogTmpl = []byte(`[backends]
       [frontends."frontend-{{ $service.ServiceName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."frontend-{{ $service.ServiceName }}".auth.forward.tls]
@@ -431,6 +436,11 @@ var _templatesDockerTmpl = []byte(`{{$backendServers := .Servers}}
       [frontends."frontend-{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."frontend-{{ $frontendName }}".auth.forward.tls]
@@ -444,6 +454,7 @@ var _templatesDockerTmpl = []byte(`{{$backendServers := .Servers}}
 
       {{if $auth.Basic }}
       [frontends."frontend-{{ $frontendName }}".auth.basic]
+        realm = "{{ $auth.Basic.Realm }}"
         removeHeader = {{ $auth.Basic.RemoveHeader }}
         {{if $auth.Basic.Users }}
         users = [{{range $auth.Basic.Users }}
@@ -702,6 +713,11 @@ var _templatesEcsTmpl = []byte(`[backends]
       [frontends."frontend-{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."frontend-{{ $frontendName }}".auth.forward.tls]
@@ -1229,6 +1245,11 @@ var _templatesKvTmpl = []byte(`[backends]
       [frontends."{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."{{ $frontendName }}".auth.forward.tls]
@@ -1515,6 +1536,11 @@ var _templatesMarathonTmpl = []byte(`{{ $apps := .Applications }}
       [frontends."{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."{{ $frontendName }}".auth.forward.tls]
@@ -1786,6 +1812,11 @@ var _templatesMesosTmpl = []byte(`[backends]
       [frontends."frontend-{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."frontend-{{ $frontendName }}".auth.forward.tls]
@@ -2079,6 +2110,11 @@ var _templatesRancherTmpl = []byte(`{{ $backendServers := .Backends }}
       [frontends."frontend-{{ $frontendName }}".auth.forward]
         address = "{{ $auth.Forward.Address }}"
         trustForwardHeader = {{ $auth.Forward.TrustForwardHeader }}
+        {{if $auth.Forward.AuthResponseHeaders }}
+        authResponseHeaders = [{{range $auth.Forward.AuthResponseHeaders }}
+          "{{.}}",
+          {{end}}]
+        {{end}}
 
         {{if $auth.Forward.TLS }}
         [frontends."frontend-{{ $frontendName }}".auth.forward.tls]

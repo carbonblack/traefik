@@ -119,6 +119,7 @@ func GetAuth(labels map[string]string) *types.Auth {
 // getAuthBasic Create Basic Auth from labels
 func getAuthBasic(labels map[string]string) *types.Basic {
 	basicAuth := &types.Basic{
+		Realm:        GetStringValue(labels, TraefikFrontendAuthBasicRealm, ""),
 		UsersFile:    GetStringValue(labels, TraefikFrontendAuthBasicUsersFile, ""),
 		RemoveHeader: GetBoolValue(labels, TraefikFrontendAuthBasicRemoveHeader, false),
 	}
@@ -146,8 +147,9 @@ func getAuthDigest(labels map[string]string) *types.Digest {
 // getAuthForward Create Forward Auth from labels
 func getAuthForward(labels map[string]string) *types.Forward {
 	forwardAuth := &types.Forward{
-		Address:            GetStringValue(labels, TraefikFrontendAuthForwardAddress, ""),
-		TrustForwardHeader: GetBoolValue(labels, TraefikFrontendAuthForwardTrustForwardHeader, false),
+		Address:             GetStringValue(labels, TraefikFrontendAuthForwardAddress, ""),
+		AuthResponseHeaders: GetSliceStringValue(labels, TraefikFrontendAuthForwardAuthResponseHeaders),
+		TrustForwardHeader:  GetBoolValue(labels, TraefikFrontendAuthForwardTrustForwardHeader, false),
 	}
 
 	// TLS configuration
