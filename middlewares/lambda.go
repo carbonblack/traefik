@@ -59,8 +59,8 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			"custom": {
 				"X-Request-Context":         r.Header.Get("X-Request-Context"),
 				"X-User-Context":            r.Header.Get("X-User-Context"),
-				"Cookie":            		 r.Header.Get("Cookie"),
-				"X-Auth-Token":            	 r.Header.Get("X-Auth-Token"),
+				"Cookie":                    r.Header.Get("Cookie"),
+				"X-Auth-Token":              r.Header.Get("X-Auth-Token"),
 				"X-Original-Request-Method": r.Method,
 				"X-Original-Request-Url":    r.RequestURI,
 			},
