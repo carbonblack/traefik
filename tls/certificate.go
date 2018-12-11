@@ -154,13 +154,13 @@ func (c *Certificate) AppendCertificates(certs map[string]map[string]*tls.Certif
 
 	var SANs []string
 	if parsedCert.Subject.CommonName != "" {
-		SANs = append(SANs, parsedCert.Subject.CommonName)
+		SANs = append(SANs, strings.ToLower(parsedCert.Subject.CommonName))
 	}
 	if parsedCert.DNSNames != nil {
 		sort.Strings(parsedCert.DNSNames)
 		for _, dnsName := range parsedCert.DNSNames {
 			if dnsName != parsedCert.Subject.CommonName {
-				SANs = append(SANs, dnsName)
+				SANs = append(SANs, strings.ToLower(dnsName))
 			}
 		}
 
@@ -168,7 +168,7 @@ func (c *Certificate) AppendCertificates(certs map[string]map[string]*tls.Certif
 	if parsedCert.IPAddresses != nil {
 		for _, ip := range parsedCert.IPAddresses {
 			if ip.String() != parsedCert.Subject.CommonName {
-				SANs = append(SANs, ip.String())
+				SANs = append(SANs, strings.ToLower(ip.String()))
 			}
 		}
 
@@ -194,6 +194,17 @@ func (c *Certificate) AppendCertificates(certs map[string]map[string]*tls.Certif
 	}
 
 	return err
+}
+
+func (c *Certificate) getTruncatedCertificateName() string {
+	certName := c.CertFile.String()
+
+	// Truncate certificate information only if it's a well formed certificate content with more than 50 characters
+	if !c.CertFile.IsPath() && strings.HasPrefix(certName, certificateHeader) && len(certName) > len(certificateHeader)+50 {
+		certName = strings.TrimPrefix(c.CertFile.String(), certificateHeader)[:50]
+	}
+
+	return certName
 }
 
 // String is the method to format the flag's value, part of the flag.Value interface.

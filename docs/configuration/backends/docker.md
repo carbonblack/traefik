@@ -1,7 +1,7 @@
 
 # Docker Provider
 
-Træfik can be configured to use Docker as a provider.
+Traefik can be configured to use Docker as a provider.
 
 ## Docker
 
@@ -22,7 +22,7 @@ endpoint = "unix:///var/run/docker.sock"
 # Default base domain used for the frontend rules.
 # Can be overridden by setting the "traefik.domain" label on a container.
 #
-# Required
+# Optional
 #
 domain = "docker.localhost"
 
@@ -57,7 +57,7 @@ watch = true
 exposedByDefault = true
 
 # Use the IP address from the binded port instead of the inner network one.
-# 
+#
 # In case no IP address is attached to the binded port (or in case 
 # there is no bind), the inner network one will be used as a fallback.     
 #
@@ -72,6 +72,13 @@ usebindportip = true
 # Default: false
 #
 swarmMode = false
+
+# Polling interval (in seconds) for Swarm Mode.
+#
+# Optional
+# Default: 15
+#
+swarmModeRefreshSeconds = 15
 
 # Define a default docker network to use for connections to all containers.
 # Can be overridden by the traefik.docker.network label.
@@ -93,7 +100,6 @@ network = "web"
 
 To enable constraints see [provider-specific constraints section](/configuration/commons/#provider-specific).
 
-
 ## Docker Swarm Mode
 
 ```toml
@@ -110,7 +116,10 @@ To enable constraints see [provider-specific constraints section](/configuration
 # Required
 # Default: "unix:///var/run/docker.sock"
 #
-endpoint = "tcp://127.0.0.1:2375"
+# swarm classic (1.12-)
+# endpoint = "tcp://127.0.0.1:2375"
+# docker swarm mode (1.12+)
+endpoint = "tcp://127.0.0.1:2377"
 
 # Default base domain used for the frontend rules.
 # Can be overridden by setting the "traefik.domain" label on a services.
@@ -177,6 +186,57 @@ exposedByDefault = false
 
 To enable constraints see [provider-specific constraints section](/configuration/commons/#provider-specific).
 
+## Security Considerations
+
+### Security Challenge with the Docker Socket
+
+Traefik requires access to the docker socket to get its dynamic configuration,
+by watching the Docker API through this socket.
+
+!!! important
+    Depending on your context and your usage, accessing the Docker API without any restriction might be a security concern.
+
+As explained on the Docker documentation: ([Docker Daemon Attack Surface page](https://docs.docker.com/engine/security/security/#docker-daemon-attack-surface)):
+
+`[...] only **trusted** users should be allowed to control your Docker daemon [...]`
+
+If the Traefik processes (handling requests from the outside world) is attacked,
+then the attacker can access the Docker (or Swarm Mode) backend.
+
+Also, when using Swarm Mode, it is mandatory to schedule Traefik's containers on the Swarm manager nodes,
+to let Traefik accessing the Docker Socket of the Swarm manager node.
+
+More information about Docker's security:
+
+- [KubeCon EU 2018 Keynote, Running with Scissors, from Liz Rice](https://www.youtube.com/watch?v=ltrV-Qmh3oY)
+- [Don't expose the Docker socket (not even to a container)](https://www.lvh.io/posts/dont-expose-the-docker-socket-not-even-to-a-container.html)
+- [A thread on Stack Overflow about sharing the `/var/run/docker.sock` file](https://news.ycombinator.com/item?id=17983623)
+- [To Dind or not to DinD](https://blog.loof.fr/2018/01/to-dind-or-not-do-dind.html)
+
+### Security Compensation
+
+The main security compensation is to expose the Docker socket over TCP, instead of the default Unix socket file.
+It allows different implementation levels of the [AAA (Authentication, Authorization, Accounting) concepts](https://en.wikipedia.org/wiki/AAA_(computer_security)), depending on your security assessment:
+
+- Authentication with Client Certificates as described in [the "Protect the Docker daemon socket" page of Docker's documentation](https://docs.docker.com/engine/security/https/)
+
+- Authorization with the [Docker Authorization Plugin Mechanism](https://docs.docker.com/engine/extend/plugins_authorization/)
+
+- Accounting at networking level, by exposing the socket only inside a Docker private network, only available for Traefik.
+
+- Accounting at container level, by exposing the socket on a another container than Traefik's.
+  With Swarm mode, it allows scheduling of Traefik on worker nodes, with only the "socket exposer" container on the manager nodes.
+
+- Accounting at kernel level, by enforcing kernel calls with mechanisms like [SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux),
+  to only allows an identified set of actions for Traefik's process (or the "socket exposer" process).
+
+Use the following ressources to get started:
+
+- [Traefik issue GH-4174 about security with Docker socket](https://github.com/containous/traefik/issues/4174)
+- [Inspecting Docker Activity with Socat](https://developers.redhat.com/blog/2015/02/25/inspecting-docker-activity-with-socat/)
+- [Letting Traefik run on Worker Nodes](https://blog.mikesir87.io/2018/07/letting-traefik-run-on-worker-nodes/)
+- [Docker Socket Proxy from Tecnativa](https://github.com/Tecnativa/docker-socket-proxy)
+
 ## Labels: overriding default behavior
 
 ### Using Docker with Swarm Mode
@@ -213,9 +273,9 @@ Labels can be used on containers to override default behavior.
 |---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `traefik.docker.network`                                            | Overrides the default docker network to use for connections to the container. [1]                                                                                                                                                |
 | `traefik.domain`                                                    | Sets the default base domain for the frontend rules. For more information, check the [Container Labels section's of the user guide "Let's Encrypt & Docker"](/user-guide/docker-and-lets-encrypt/#container-labels)              |
-| `traefik.enable=false`                                              | Disables this container in Træfik.                                                                                                                                                                                               |
+| `traefik.enable=false`                                              | Disables this container in Traefik.                                                                                                                                                                                              |
 | `traefik.port=80`                                                   | Registers this port. Useful when the container exposes multiples ports.                                                                                                                                                          |
-| `traefik.tags=foo,bar,myTag`                                        | Adds Træfik tags to the Docker container/service to be used in [constraints](/configuration/commons/#constraints).                                                                                                               |
+| `traefik.tags=foo,bar,myTag`                                        | Adds Traefik tags to the Docker container/service to be used in [constraints](/configuration/commons/#constraints).                                                                                                              |
 | `traefik.protocol=https`                                            | Overrides the default `http` protocol                                                                                                                                                                                            |
 | `traefik.weight=10`                                                 | Assigns this weight to the container                                                                                                                                                                                             |
 | `traefik.backend=foo`                                               | Gives the name `foo` to the generated backend for this container.                                                                                                                                                                |
@@ -225,9 +285,9 @@ Labels can be used on containers to override default behavior.
 | `traefik.backend.buffering.memResponseBodyBytes=0`                  | See [buffering](/configuration/commons/#buffering) section.                                                                                                                                                                      |
 | `traefik.backend.buffering.retryExpression=EXPR`                    | See [buffering](/configuration/commons/#buffering) section.                                                                                                                                                                      |
 | `traefik.backend.circuitbreaker.expression=EXPR`                    | Creates a [circuit breaker](/basics/#backends) to be used against the backend                                                                                                                                                    |
+| `traefik.backend.responseForwarding.flushInterval=10ms`             | Defines the interval between two flushes when forwarding response from backend to client.                                                                                                                                        |
 | `traefik.backend.healthcheck.path=/health`                          | Enables health check for the backend, hitting the container at `path`.                                                                                                                                                           |
-| `traefik.backend.healthcheck.interval=5s`                           | Defines the health check interval.                                                                                                                                                                                               |
-| `traefik.backend.healthcheck.timeout=3s`                            | Defines the health check request timeout.                                                                                                                                                                                        |
+| `traefik.backend.healthcheck.interval=1s`                           | Defines the health check interval.                                                                                                                                                                                               |
 | `traefik.backend.healthcheck.port=8080`                             | Sets a different port for the health check.                                                                                                                                                                                      |
 | `traefik.backend.healthcheck.scheme=http`                           | Overrides the server URL scheme.                                                                                                                                                                                                 |
 | `traefik.backend.healthcheck.hostname=foobar.com`                   | Defines the health check hostname.                                                                                                                                                                                               |
@@ -235,11 +295,11 @@ Labels can be used on containers to override default behavior.
 | `traefik.backend.loadbalancer.method=drr`                           | Overrides the default `wrr` load balancer algorithm                                                                                                                                                                              |
 | `traefik.backend.loadbalancer.stickiness=true`                      | Enables backend sticky sessions                                                                                                                                                                                                  |
 | `traefik.backend.loadbalancer.stickiness.cookieName=NAME`           | Sets the cookie name manually for sticky sessions                                                                                                                                                                                |
-| `traefik.backend.loadbalancer.swarm=true`                           | Uses Swarm's inbuilt load balancer (only relevant under Swarm Mode).                                                                                                                                                             |
+| `traefik.backend.loadbalancer.sticky=true`                          | Enables backend sticky sessions (DEPRECATED)                                                                                                                                                                                     |
+| `traefik.backend.loadbalancer.swarm=true`                           | Uses Swarm's inbuilt load balancer (only relevant under Swarm Mode) [3].                                                                                                                                                         |
 | `traefik.backend.maxconn.amount=10`                                 | Sets a maximum number of connections to the backend.<br>Must be used in conjunction with the below label to take effect.                                                                                                         |
 | `traefik.backend.maxconn.extractorfunc=client.ip`                   | Sets the function to be used against the request to determine what to limit maximum connections to the backend by.<br>Must be used in conjunction with the above label to take effect.                                           |
 | `traefik.frontend.auth.basic=EXPR`                                  | Sets the basic authentication to this frontend in CSV format: `User:Hash,User:Hash` [2] (DEPRECATED).                                                                                                                            |
-| `traefik.frontend.auth.basic.realm=REALM`                     | Sets the realm of basic authentication to this frontend.                                                                                                                                                                            |
 | `traefik.frontend.auth.basic.removeHeader=true`                     | If set to `true`, removes the `Authorization` header.                                                                                                                                                                            |
 | `traefik.frontend.auth.basic.users=EXPR`                            | Sets the basic authentication to this frontend in CSV format: `User:Hash,User:Hash` [2].                                                                                                                                         |
 | `traefik.frontend.auth.basic.usersFile=/path/.htpasswd`             | Sets the basic authentication with an external file; if users and usersFile are provided, both are merged, with external file contents having precedence.                                                                        |
@@ -282,25 +342,28 @@ Labels can be used on containers to override default behavior.
 | `traefik.frontend.redirect.permanent=true`                          | Returns 301 instead of 302.                                                                                                                                                                                                      |
 | `traefik.frontend.rule=EXPR`                                        | Overrides the default frontend rule. Default: `Host:{containerName}.{domain}` or `Host:{service}.{project_name}.{domain}` if you are using `docker-compose`.                                                                     |
 | `traefik.frontend.whiteList.sourceRange=RANGE`                      | Sets a list of IP-Ranges which are allowed to access.<br>An unset or empty list allows all Source-IPs to access.<br>If one of the Net-Specifications are invalid, the whole list is invalid and allows all Source-IPs to access. |
-| `traefik.frontend.whiteList.ipStrategy=true`                        | Uses the default IPStrategy.<br>Can be used when there is an existing `clientIPStrategy` but you want the remote address for whitelisting.                                                                                       |
-| `traefik.frontend.whiteList.ipStrategy.depth=5`                     | See [whitelist](/configuration/entrypoints/#white-listing)                                                                                                                                                                       |
-| `traefik.frontend.whiteList.ipStrategy.excludedIPs=127.0.0.1`       | See [whitelist](/configuration/entrypoints/#white-listing)                                                                                                                                                                       |
+| `traefik.frontend.whiteList.useXForwardedFor=true`                  | Uses `X-Forwarded-For` header as valid source of IP for the white list.                                                                                                                                                          |
 
-[1] `traefik.docker.network`:
-If a container is linked to several networks, be sure to set the proper network name (you can check with `docker inspect <container_id>`) otherwise it will randomly pick one (depending on how docker is returning them).
+[1] `traefik.docker.network`:  
+If a container is linked to several networks, be sure to set the proper network name (you can check with `docker inspect <container_id>`) otherwise it will randomly pick one (depending on how docker is returning them).  
 For instance when deploying docker `stack` from compose files, the compose defined networks will be prefixed with the `stack` name.
 Or if your service references external network use it's name instead.
 
-[2] `traefik.frontend.auth.basic.users=EXPR `:  
+[2] `traefik.frontend.auth.basic.users=EXPR`:  
 To create `user:password` pair, it's possible to use this command:  
 `echo $(htpasswd -nb user password) | sed -e s/\\$/\\$\\$/g`.  
 The result will be `user:$$apr1$$9Cv/OMGj$$ZomWQzuQbL.3TRCS81A1g/`, note additional symbol `$` makes escaping.
+
+[3] `traefik.backend.loadbalancer.swarm`:  
+If you enable this option, Traefik will use the virtual IP provided by docker swarm instead of the containers IPs.
+Which means that Traefik will not perform any kind of load balancing and will delegate this task to swarm.  
+It also means that Traefik will manipulate only one backend, not one backend per container.
 
 #### Custom Headers
 
 | Label                                                 | Description                                                                                                                                                                         |
 |-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `traefik.frontend.headers.customRequestHeaders=EXPR ` | Provides the container with custom request headers that will be appended to each request forwarded to the container.<br>Format: <code>HEADER:value&vert;&vert;HEADER2:value2</code> |
+| `traefik.frontend.headers.customRequestHeaders=EXPR`  | Provides the container with custom request headers that will be appended to each request forwarded to the container.<br>Format: <code>HEADER:value&vert;&vert;HEADER2:value2</code> |
 | `traefik.frontend.headers.customResponseHeaders=EXPR` | Appends the headers to each response returned by the container, before forwarding the response to the client.<br>Format: <code>HEADER:value&vert;&vert;HEADER2:value2</code>        |
 
 #### Security Headers
@@ -315,9 +378,9 @@ The result will be `user:$$apr1$$9Cv/OMGj$$ZomWQzuQbL.3TRCS81A1g/`, note additio
 | `traefik.frontend.headers.customFrameOptionsValue=VALUE` | Overrides the `X-Frame-Options` header with the custom value.                                                                                                                                       |
 | `traefik.frontend.headers.forceSTSHeader=false`          | Adds the STS  header to non-SSL requests.                                                                                                                                                           |
 | `traefik.frontend.headers.frameDeny=false`               | Adds the `X-Frame-Options` header with the value of `DENY`.                                                                                                                                         |
-| `traefik.frontend.headers.hostsProxyHeaders=EXPR `       | Provides a list of headers that the proxied hostname may be stored.<br>Format: `HEADER1,HEADER2`                                                                                                    |
+| `traefik.frontend.headers.hostsProxyHeaders=EXPR`        | Provides a list of headers that the proxied hostname may be stored.<br>Format: `HEADER1,HEADER2`                                                                                                    |
 | `traefik.frontend.headers.isDevelopment=false`           | This will cause the `AllowedHosts`, `SSLRedirect`, and `STSSeconds`/`STSIncludeSubdomains` options to be ignored during development.<br>When deploying to production, be sure to set this to false. |
-| `traefik.frontend.headers.publicKey=VALUE`               | Adds pinned HTST public key header.                                                                                                                                                                 |
+| `traefik.frontend.headers.publicKey=VALUE`               | Adds HPKP header.                                                                                                                                                                                   |
 | `traefik.frontend.headers.referrerPolicy=VALUE`          | Adds referrer policy  header.                                                                                                                                                                       |
 | `traefik.frontend.headers.SSLRedirect=true`              | Forces the frontend to redirect to SSL if a non-SSL request is sent.                                                                                                                                |
 | `traefik.frontend.headers.SSLTemporaryRedirect=true`     | Forces the frontend to redirect to SSL if a non-SSL request is sent, but by sending a 302 instead of a 301.                                                                                         |
@@ -336,65 +399,63 @@ You can define as many segments as ports exposed in a container.
 
 Segment labels override the default behavior.
 
-| Label                                                                              | Description                                                            |
-|------------------------------------------------------------------------------------|------------------------------------------------------------------------|
-| `traefik.<segment_name>.backend=BACKEND`                                           | Same as `traefik.backend`                                              |
-| `traefik.<segment_name>.domain=DOMAIN`                                             | Same as `traefik.domain`                                               |
-| `traefik.<segment_name>.port=PORT`                                                 | Same as `traefik.port`                                                 |
-| `traefik.<segment_name>.protocol=http`                                             | Same as `traefik.protocol`                                             |
-| `traefik.<segment_name>.weight=10`                                                 | Same as `traefik.weight`                                               |
-| `traefik.<segment_name>.frontend.auth.basic=EXPR`                                  | Same as `traefik.frontend.auth.basic`                                  |
-| `traefik.<segment_name>.frontend.auth.basic.removeHeader=true`                     | Same as `traefik.frontend.auth.basic.removeHeader`                     |
-| `traefik.<segment_name>.frontend.auth.basic.users=EXPR`                            | Same as `traefik.frontend.auth.basic.users`                            |
-| `traefik.<segment_name>.frontend.auth.basic.usersFile=/path/.htpasswd`             | Same as `traefik.frontend.auth.basic.usersFile`                        |
-| `traefik.<segment_name>.frontend.auth.digest.removeHeader=true`                    | Same as `traefik.frontend.auth.digest.removeHeader`                    |
-| `traefik.<segment_name>.frontend.auth.digest.users=EXPR`                           | Same as `traefik.frontend.auth.digest.users`                           |
-| `traefik.<segment_name>.frontend.auth.digest.usersFile=/path/.htdigest`            | Same as `traefik.frontend.auth.digest.usersFile`                       |
-| `traefik.<segment_name>.frontend.auth.forward.address=https://example.com`         | Same as `traefik.frontend.auth.forward.address`                        |
-| `traefik.<segment_name>.frontend.auth.forward.authResponseHeaders=EXPR`            | Same as `traefik.frontend.auth.forward.authResponseHeaders`            |
-| `traefik.<segment_name>.frontend.auth.forward.tls.ca=/path/ca.pem`                 | Same as `traefik.frontend.auth.forward.tls.ca`                         |
-| `traefik.<segment_name>.frontend.auth.forward.tls.caOptional=true`                 | Same as `traefik.frontend.auth.forward.tls.caOptional`                 |
-| `traefik.<segment_name>.frontend.auth.forward.tls.cert=/path/server.pem`           | Same as `traefik.frontend.auth.forward.tls.cert`                       |
-| `traefik.<segment_name>.frontend.auth.forward.tls.insecureSkipVerify=true`         | Same as `traefik.frontend.auth.forward.tls.insecureSkipVerify`         |
-| `traefik.<segment_name>.frontend.auth.forward.tls.key=/path/server.key`            | Same as `traefik.frontend.auth.forward.tls.key`                        |
-| `traefik.<segment_name>.frontend.auth.forward.trustForwardHeader=true`             | Same as `traefik.frontend.auth.forward.trustForwardHeader`             |
-| `traefik.<segment_name>.frontend.auth.headerField=X-WebAuth-User`                  | Same as `traefik.frontend.auth.headerField`                            |
-| `traefik.<segment_name>.frontend.entryPoints=https`                                | Same as `traefik.frontend.entryPoints`                                 |
-| `traefik.<segment_name>.frontend.errors.<name>.backend=NAME`                       | Same as `traefik.frontend.errors.<name>.backend`                       |
-| `traefik.<segment_name>.frontend.errors.<name>.query=PATH`                         | Same as `traefik.frontend.errors.<name>.query`                         |
-| `traefik.<segment_name>.frontend.errors.<name>.status=RANGE`                       | Same as `traefik.frontend.errors.<name>.status`                        |
-| `traefik.<segment_name>.frontend.passHostHeader=true`                              | Same as `traefik.frontend.passHostHeader`                              |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.notAfter=true`            | Same as `traefik.frontend.passTLSClientCert.infos.notAfter`            |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.notBefore=true`           | Same as `traefik.frontend.passTLSClientCert.infos.notBefore`           |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.sans=true`                | Same as `traefik.frontend.passTLSClientCert.infos.sans`                |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.commonName=true`  | Same as `traefik.frontend.passTLSClientCert.infos.subject.commonName`  |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.country=true`     | Same as `traefik.frontend.passTLSClientCert.infos.subject.country`     |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.locality=true`    | Same as `traefik.frontend.passTLSClientCert.infos.subject.locality`    |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.organization=true`| Same as `traefik.frontend.passTLSClientCert.infos.subject.organization`|
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.province=true`    | Same as `traefik.frontend.passTLSClientCert.infos.subject.province`    |
-| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.serialNumber=true`| Same as `traefik.frontend.passTLSClientCert.infos.subject.serialNumber`|
-| `traefik.<segment_name>.frontend.passTLSClientCert.pem=true`                       | Same as `traefik.frontend.passTLSClientCert.infos.pem`                 |
-| `traefik.<segment_name>.frontend.passTLSCert=true`                                 | Same as `traefik.frontend.passTLSCert`                                 |
-| `traefik.<segment_name>.frontend.priority=10`                                      | Same as `traefik.frontend.priority`                                    |
-| `traefik.<segment_name>.frontend.rateLimit.extractorFunc=EXP`                      | Same as `traefik.frontend.rateLimit.extractorFunc`                     |
-| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.period=6`                | Same as `traefik.frontend.rateLimit.rateSet.<name>.period`             |
-| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.average=6`               | Same as `traefik.frontend.rateLimit.rateSet.<name>.average`            |
-| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.burst=6`                 | Same as `traefik.frontend.rateLimit.rateSet.<name>.burst`              |
-| `traefik.<segment_name>.frontend.redirect.entryPoint=https`                        | Same as `traefik.frontend.redirect.entryPoint`                         |
-| `traefik.<segment_name>.frontend.redirect.regex=^http://localhost/(.*)`            | Same as `traefik.frontend.redirect.regex`                              |
-| `traefik.<segment_name>.frontend.redirect.replacement=http://mydomain/$1`          | Same as `traefik.frontend.redirect.replacement`                        |
-| `traefik.<segment_name>.frontend.redirect.permanent=true`                          | Same as `traefik.frontend.redirect.permanent`                          |
-| `traefik.<segment_name>.frontend.rule=EXP`                                         | Same as `traefik.frontend.rule`                                        |
-| `traefik.<segment_name>.frontend.whiteList.sourceRange=RANGE`                      | Same as `traefik.frontend.whiteList.sourceRange`                       |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy=true`                        | Same as `traefik.frontend.whiteList.ipStrategy`                        |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy.depth=5`                     | Same as `traefik.frontend.whiteList.ipStrategy.depth`                  |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy.excludedIPs=127.0.0.1`       | Same as `traefik.frontend.whiteList.ipStrategy.excludedIPs`            |
+| Label                                                                               | Description                                                             |
+|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| `traefik.<segment_name>.backend=BACKEND`                                            | Same as `traefik.backend`                                               |
+| `traefik.<segment_name>.domain=DOMAIN`                                              | Same as `traefik.domain`                                                |
+| `traefik.<segment_name>.port=PORT`                                                  | Same as `traefik.port`                                                  |
+| `traefik.<segment_name>.protocol=http`                                              | Same as `traefik.protocol`                                              |
+| `traefik.<segment_name>.weight=10`                                                  | Same as `traefik.weight`                                                |
+| `traefik.<segment_name>.frontend.auth.basic=EXPR`                                   | Same as `traefik.frontend.auth.basic`                                   |
+| `traefik.<segment_name>.frontend.auth.basic.removeHeader=true`                      | Same as `traefik.frontend.auth.basic.removeHeader`                      |
+| `traefik.<segment_name>.frontend.auth.basic.users=EXPR`                             | Same as `traefik.frontend.auth.basic.users`                             |
+| `traefik.<segment_name>.frontend.auth.basic.usersFile=/path/.htpasswd`              | Same as `traefik.frontend.auth.basic.usersFile`                         |
+| `traefik.<segment_name>.frontend.auth.digest.removeHeader=true`                     | Same as `traefik.frontend.auth.digest.removeHeader`                     |
+| `traefik.<segment_name>.frontend.auth.digest.users=EXPR`                            | Same as `traefik.frontend.auth.digest.users`                            |
+| `traefik.<segment_name>.frontend.auth.digest.usersFile=/path/.htdigest`             | Same as `traefik.frontend.auth.digest.usersFile`                        |
+| `traefik.<segment_name>.frontend.auth.forward.address=https://example.com`          | Same as `traefik.frontend.auth.forward.address`                         |
+| `traefik.<segment_name>.frontend.auth.forward.authResponseHeaders=EXPR`             | Same as `traefik.frontend.auth.forward.authResponseHeaders`             |
+| `traefik.<segment_name>.frontend.auth.forward.tls.ca=/path/ca.pem`                  | Same as `traefik.frontend.auth.forward.tls.ca`                          |
+| `traefik.<segment_name>.frontend.auth.forward.tls.caOptional=true`                  | Same as `traefik.frontend.auth.forward.tls.caOptional`                  |
+| `traefik.<segment_name>.frontend.auth.forward.tls.cert=/path/server.pem`            | Same as `traefik.frontend.auth.forward.tls.cert`                        |
+| `traefik.<segment_name>.frontend.auth.forward.tls.insecureSkipVerify=true`          | Same as `traefik.frontend.auth.forward.tls.insecureSkipVerify`          |
+| `traefik.<segment_name>.frontend.auth.forward.tls.key=/path/server.key`             | Same as `traefik.frontend.auth.forward.tls.key`                         |
+| `traefik.<segment_name>.frontend.auth.forward.trustForwardHeader=true`              | Same as `traefik.frontend.auth.forward.trustForwardHeader`              |
+| `traefik.<segment_name>.frontend.auth.headerField=X-WebAuth-User`                   | Same as `traefik.frontend.auth.headerField`                             |
+| `traefik.<segment_name>.frontend.entryPoints=https`                                 | Same as `traefik.frontend.entryPoints`                                  |
+| `traefik.<segment_name>.frontend.errors.<name>.backend=NAME`                        | Same as `traefik.frontend.errors.<name>.backend`                        |
+| `traefik.<segment_name>.frontend.errors.<name>.query=PATH`                          | Same as `traefik.frontend.errors.<name>.query`                          |
+| `traefik.<segment_name>.frontend.errors.<name>.status=RANGE`                        | Same as `traefik.frontend.errors.<name>.status`                         |
+| `traefik.<segment_name>.frontend.passHostHeader=true`                               | Same as `traefik.frontend.passHostHeader`                               |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.notAfter=true`             | Same as `traefik.frontend.passTLSClientCert.infos.notAfter`             |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.notBefore=true`            | Same as `traefik.frontend.passTLSClientCert.infos.notBefore`            |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.sans=true`                 | Same as `traefik.frontend.passTLSClientCert.infos.sans`                 |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.commonName=true`   | Same as `traefik.frontend.passTLSClientCert.infos.subject.commonName`   |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.country=true`      | Same as `traefik.frontend.passTLSClientCert.infos.subject.country`      |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.locality=true`     | Same as `traefik.frontend.passTLSClientCert.infos.subject.locality`     |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.organization=true` | Same as `traefik.frontend.passTLSClientCert.infos.subject.organization` |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.province=true`     | Same as `traefik.frontend.passTLSClientCert.infos.subject.province`     |
+| `traefik.<segment_name>.frontend.passTLSClientCert.infos.subject.serialNumber=true` | Same as `traefik.frontend.passTLSClientCert.infos.subject.serialNumber` |
+| `traefik.<segment_name>.frontend.passTLSClientCert.pem=true`                        | Same as `traefik.frontend.passTLSClientCert.infos.pem`                  |
+| `traefik.<segment_name>.frontend.passTLSCert=true`                                  | Same as `traefik.frontend.passTLSCert`                                  |
+| `traefik.<segment_name>.frontend.priority=10`                                       | Same as `traefik.frontend.priority`                                     |
+| `traefik.<segment_name>.frontend.rateLimit.extractorFunc=EXP`                       | Same as `traefik.frontend.rateLimit.extractorFunc`                      |
+| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.period=6`                 | Same as `traefik.frontend.rateLimit.rateSet.<name>.period`              |
+| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.average=6`                | Same as `traefik.frontend.rateLimit.rateSet.<name>.average`             |
+| `traefik.<segment_name>.frontend.rateLimit.rateSet.<name>.burst=6`                  | Same as `traefik.frontend.rateLimit.rateSet.<name>.burst`               |
+| `traefik.<segment_name>.frontend.redirect.entryPoint=https`                         | Same as `traefik.frontend.redirect.entryPoint`                          |
+| `traefik.<segment_name>.frontend.redirect.regex=^http://localhost/(.*)`             | Same as `traefik.frontend.redirect.regex`                               |
+| `traefik.<segment_name>.frontend.redirect.replacement=http://mydomain/$1`           | Same as `traefik.frontend.redirect.replacement`                         |
+| `traefik.<segment_name>.frontend.redirect.permanent=true`                           | Same as `traefik.frontend.redirect.permanent`                           |
+| `traefik.<segment_name>.frontend.rule=EXP`                                          | Same as `traefik.frontend.rule`                                         |
+| `traefik.<segment_name>.frontend.whiteList.sourceRange=RANGE`                       | Same as `traefik.frontend.whiteList.sourceRange`                        |
+| `traefik.<segment_name>.frontend.whiteList.useXForwardedFor=true`                   | Same as `traefik.frontend.whiteList.useXForwardedFor`                   |
 
 #### Custom Headers
 
 | Label                                                                | Description                                              |
 |----------------------------------------------------------------------|----------------------------------------------------------|
-| `traefik.<segment_name>.frontend.headers.customRequestHeaders=EXPR ` | Same as `traefik.frontend.headers.customRequestHeaders`  |
+| `traefik.<segment_name>.frontend.headers.customRequestHeaders=EXPR`  | Same as `traefik.frontend.headers.customRequestHeaders`  |
 | `traefik.<segment_name>.frontend.headers.customResponseHeaders=EXPR` | Same as `traefik.frontend.headers.customResponseHeaders` |
 
 #### Security Headers
@@ -430,16 +491,16 @@ Segment labels override the default behavior.
     More details in this [example](/user-guide/docker-and-lets-encrypt/#labels).
 
 !!! warning
-    When running inside a container, Træfik will need network access through:
+    When running inside a container, Traefik will need network access through:
 
     `docker network connect <network> <traefik-container>`
 
 ## usebindportip
 
-The default behavior of Træfik is to route requests to the IP/Port of the matching container.
-When setting `usebindportip` to true, you tell Træfik to use the IP/Port attached to the container's binding instead of the inner network IP/Port.
+The default behavior of Traefik is to route requests to the IP/Port of the matching container.
+When setting `usebindportip` to true, you tell Traefik to use the IP/Port attached to the container's binding instead of the inner network IP/Port.
 
-When used in conjunction with the `traefik.port` label (that tells Træfik to route requests to a specific port), Træfik tries to find a binding with `traefik.port` port to select the container. If it can't find such a binding, Træfik falls back on the internal network IP of the container, but still uses the `traefik.port` that is set in the label.
+When used in conjunction with the `traefik.port` label (that tells Traefik to route requests to a specific port), Traefik tries to find a binding with `traefik.port` port to select the container. If it can't find such a binding, Traefik falls back on the internal network IP of the container, but still uses the `traefik.port` that is set in the label.
 
 Below is a recap of the behavior of `usebindportip` in different situations.
 

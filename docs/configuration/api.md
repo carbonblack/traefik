@@ -4,7 +4,7 @@
 
 ```toml
 # API definition
-# Warning: Enabling API will expose Træfik's configuration.
+# Warning: Enabling API will expose Traefik's configuration.
 # It is not recommended in production,
 # unless secured by authentication and authorizations
 [api]
@@ -61,7 +61,7 @@ keeping it restricted over internal networks
 
 | Path                                                            | Method           | Description                               |
 |-----------------------------------------------------------------|------------------|-------------------------------------------|
-| `/`                                                             |     `GET`        | Provides a simple HTML frontend of Træfik |
+| `/`                                                             |     `GET`        | Provides a simple HTML frontend of Traefik |
 | `/cluster/leader`                                               |     `GET`        | JSON leader true/false response           |
 | `/health`                                                       |     `GET`        | JSON health metrics                       |
 | `/api`                                                          |     `GET`        | Configuration for all providers           |
@@ -106,10 +106,10 @@ entryPoint = "foo"
 entryPoint = "bar"
 ```
 
-In the above example, you would access a regular path, administration panel, and health-check as follows:
+In the above example, you would access a regular path, dashboard, and health-check as follows:
 
 * Regular path: `http://hostname:80/path`
-* Admin Panel: `http://hostname:8083/`
+* Dashboard: `http://hostname:8083/`
 * Ping URL: `http://hostname:8082/ping`
 
 In the above example, it is _very_ important to create a named dedicated entry point, and do **not** include it in `defaultEntryPoints`.
@@ -268,11 +268,11 @@ curl -s "http://localhost:8080/health" | jq .
 ```
 ```json
 {
-  // Træfik PID
+  // Traefik PID
   "pid": 2458,
-  // Træfik server uptime (formated time)
+  // Traefik server uptime (formated time)
   "uptime": "39m6.885931127s",
-  //  Træfik server uptime in seconds
+  //  Traefik server uptime in seconds
   "uptime_sec": 2346.885931127,
   // current server date
   "time": "2015-10-07 18:32:24.362238909 +0200 CEST",
@@ -282,7 +282,7 @@ curl -s "http://localhost:8080/health" | jq .
   "status_code_count": {
     "502": 1
   },
-  // count HTTP response status code since Træfik started
+  // count HTTP response status code since Traefik started
   "total_status_code_count": {
     "200": 7,
     "404": 21,

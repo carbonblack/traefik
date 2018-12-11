@@ -111,6 +111,8 @@ func GetAuth(labels map[string]string) *types.Auth {
 		auth.Digest = getAuthDigest(labels)
 	} else if HasPrefix(labels, TraefikFrontendAuthForward) {
 		auth.Forward = getAuthForward(labels)
+	} else {
+		return nil
 	}
 
 	return auth
@@ -356,6 +358,19 @@ func GetHealthCheck(labels map[string]string) *types.HealthCheck {
 		Timeout:  timeout,
 		Hostname: hostname,
 		Headers:  headers,
+	}
+}
+
+// GetResponseForwarding Create ResponseForwarding from labels
+func GetResponseForwarding(labels map[string]string) *types.ResponseForwarding {
+	if !HasPrefix(labels, TraefikBackendResponseForwardingFlushInterval) {
+		return nil
+	}
+
+	value := GetStringValue(labels, TraefikBackendResponseForwardingFlushInterval, "0")
+
+	return &types.ResponseForwarding{
+		FlushInterval: value,
 	}
 }
 

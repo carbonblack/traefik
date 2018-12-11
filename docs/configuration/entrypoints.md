@@ -13,18 +13,12 @@ defaultEntryPoints = ["http", "https"]
 [entryPoints]
   [entryPoints.http]
     address = ":80"
-    [entryPoints.http.compress]
-    
-    [entryPoints.http.clientIPStrategy]
-      depth = 5
-      excludedIPs = ["127.0.0.1/32", "192.168.1.7"]
+    compress = true
 
     [entryPoints.http.whitelist]
       sourceRange = ["10.42.0.0/16", "152.89.1.33/32", "afed:be44::/16"]
-      [entryPoints.http.whitelist.IPStrategy]
-        depth = 5
-        excludedIPs = ["127.0.0.1/32", "192.168.1.7"]
-          
+      useXForwardedFor = true
+
     [entryPoints.http.tls]
       minVersion = "VersionTLS12"
       cipherSuites = [
@@ -52,7 +46,6 @@ defaultEntryPoints = ["http", "https"]
       headerField = "X-WebAuth-User"
       [entryPoints.http.auth.basic]
         removeHeader = true
-        realm = "Your realm"
         users = [
           "test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/",
           "test2:$apr1$d9hr9HBB$4HxwgUir3HP4EsggP/QNo0",
@@ -82,7 +75,6 @@ defaultEntryPoints = ["http", "https"]
 
     [entryPoints.http.forwardedHeaders]
       trustedIPs = ["10.10.10.1", "10.10.10.2"]
-      insecure = false
 
   [entryPoints.https]
     # ...
@@ -137,14 +129,12 @@ Redirect.Replacement:http://mydomain/$1
 Redirect.Permanent:true
 Compress:true
 WhiteList.SourceRange:10.42.0.0/16,152.89.1.33/32,afed:be44::/16
-WhiteList.IPStrategy.depth:3
-WhiteList.IPStrategy.ExcludedIPs:10.0.0.3/24,20.0.0.3/24
+WhiteList.UseXForwardedFor:true
 ProxyProtocol.TrustedIPs:192.168.0.1
 ProxyProtocol.Insecure:true
 ForwardedHeaders.TrustedIPs:10.0.0.3/24,20.0.0.3/24
 Auth.Basic.Users:test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/,test2:$apr1$d9hr9HBB$4HxwgUir3HP4EsggP/QNo0
 Auth.Basic.Removeheader:true
-Auth.Basic.Realm:traefik
 Auth.Digest.Users:test:traefik:a2688e031edb4be6a3797f3882655c05,test2:traefik:518845800f9e2bfb1f1f740ec24f074e
 Auth.Digest.Removeheader:true
 Auth.HeaderField:X-WebAuth-User
@@ -245,12 +235,12 @@ If you need to add or remove TLS certificates while Traefik is started, Dynamic 
 ## TLS Mutual Authentication
 
 TLS Mutual Authentication can be `optional` or not.
-If it's `optional`, Træfik will authorize connection with certificates not signed by a specified Certificate Authority (CA).
-Otherwise, Træfik will only accept clients that present a certificate signed by a specified Certificate Authority (CA).
-`ClientCA.files` can be configured with multiple `CA:s` in the same file or use multiple files containing one or several `CA:s`.
+If it's `optional`, Traefik will authorize connection with certificates not signed by a specified Certificate Authority (CA).
+Otherwise, Traefik will only accept clients that present a certificate signed by a specified Certificate Authority (CA).
+`ClientCAFiles` can be configured with multiple `CA:s` in the same file or use multiple files containing one or several `CA:s`.
 The `CA:s` has to be in PEM format.
 
-By default, `ClientCA.files` is not optional, all clients will be required to present a valid cert.
+By default, `ClientCAFiles` is not optional, all clients will be required to present a valid cert.
 The requirement will apply to all server certs in the entrypoint.
 
 In the example below both `snitest.com` and `snitest.org` will require client certs
@@ -270,6 +260,10 @@ In the example below both `snitest.com` and `snitest.org` will require client ce
     certFile = "integration/fixtures/https/snitest.org.cert"
     keyFile = "integration/fixtures/https/snitest.org.key"
 ```
+
+!!! note
+    The deprecated argument `ClientCAFiles` allows adding Client CA files which are mandatory.
+    If this parameter exists, the new ones are not checked.
 
 ## Authentication
 
@@ -291,18 +285,6 @@ Users can be specified directly in the TOML file, or indirectly by referencing a
 ```
 
 Optionally, you can:
-
-- customize the realm
-
-```toml
-[entryPoints]
-  [entryPoints.http]
-  address = ":80"
-  [entryPoints.http.auth]
-    [entryPoints.http.auth.basic]
-    realm = "Your realm"
-    users = ["test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/", "test2:$apr1$d9hr9HBB$4HxwgUir3HP4EsggP/QNo0"]
-```
 
 - pass authenticated user to application via headers
 
@@ -475,7 +457,7 @@ To enable compression support using gzip format.
 [entryPoints]
   [entryPoints.http]
   address = ":80"
-  [entryPoints.http.compress]
+  compress = true
 ```
 
 Responses are compressed when:
@@ -486,9 +468,7 @@ Responses are compressed when:
 
 ## White Listing
 
-Træfik supports whitelisting to accept or refuse requests based on the client IP.
-
-The following example enables IP white listing and accepts requests from client IPs defined in `sourceRange`.
+To enable IP white listing at the entry point level.
 
 ```toml
 [entryPoints]
@@ -497,96 +477,8 @@ The following example enables IP white listing and accepts requests from client 
 
     [entryPoints.http.whiteList]
       sourceRange = ["127.0.0.1/32", "192.168.1.7"]
-      # [entryPoints.http.whiteList.IPStrategy]
-      # Override the clientIPStrategy
+      # useXForwardedFor = true
 ```
-
-By default, Træfik uses the client IP (see [ClientIPStrategy](/configuration/entrypoints/#clientipstrategy)) for the whitelisting.
-
-If you want to use another IP than the one determined by `ClientIPStrategy` for the whitelisting, you can define the `IPStrategy` option:
-
-```toml
-[entryPoints]
-  [entryPoints.http.clientIPStrategy]
-    depth = 4
-  [entryPoints.http]
-    address = ":80"
-
-    [entryPoints.http.whiteList]
-      sourceRange = ["127.0.0.1/32", "192.168.1.7"]
-      [entryPoints.http.whiteList.IPStrategy]
-      depth = 2
-```
-
-In the above example, if the value of the `X-Forwarded-For` header was `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` then the client IP would be `"10.0.0.1"` (`clientIPStrategy.depth=4`) but the IP used for the whitelisting would be `"12.0.0.1"` (`whitelist.IPStrategy.depth=2`).
-
-## ClientIPStrategy
-
-The `clientIPStrategy` defines how you want Træfik to determine the client IP (used for whitelisting for example).
-
-There are several option available:
-
-### Depth
-
-This option uses the `X-Forwarded-For` header and takes the IP located at the `depth` position (starting from the right).
-```toml
-[entryPoints]
-  [entryPoints.http]
-    address = ":80"
-
-    [entryPoints.http.clientIPStrategy]
-```
- 
-```toml
-[entryPoints]
-  [entryPoints.http]
-    address = ":80"
-
-    [entryPoints.http.clientIPStrategy]
-      depth = 5
-```
-
-!!! note
-    - If `depth` is greater than the total number of IPs in `X-Forwarded-For`, then clientIP will be empty.
-    - If `depth` is lesser than or equal to 0, then the option is ignored.
-
-Examples:
-  
-| `X-Forwarded-For`                       | `depth` | clientIP     |
-|-----------------------------------------|---------|--------------|
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `1`     | `"13.0.0.1"` |
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `3`     | `"11.0.0.1"` |
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `5`     | `""`         |
-  
-### Excluded IPs
-
-Træfik will scan the `X-Forwarded-For` header (from the right) and pick the first IP not in the `excludedIPs` list.
-
-```toml
-[entryPoints]
-  [entryPoints.http]
-    address = ":80"
-
-    [entryPoints.http.clientIPStrategy]
-      excludedIPs = ["127.0.0.1/32", "192.168.1.7"]
-```
-
-!!! note
-    If `depth` is specified, `excludedIPs` is ignored.
-   
-Examples:
-
-| `X-Forwarded-For`                       | `excludedIPs`         | clientIP     |
-|-----------------------------------------|-----------------------|--------------|
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `"12.0.0.1,13.0.0.1"` | `"11.0.0.1"` |
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `"15.0.0.1,13.0.0.1"` | `"12.0.0.1"` |
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `"10.0.0.1,13.0.0.1"` | `"12.0.0.1"` |
-| `"10.0.0.1,11.0.0.1,12.0.0.1,13.0.0.1"` | `"15.0.0.1,16.0.0.1"` | `"13.0.0.1"` |
-| `"10.0.0.1,11.0.0.1"`                   | `"10.0.0.1,11.0.0.1"` | `""`         |
-
-### Default
-
-If there are no `depth` or `excludedIPs`, then the client IP is the IP of the computer that initiated the connection with the Træfik server (the remote address).
 
 ## ProxyProtocol
 
@@ -594,7 +486,7 @@ To enable [ProxyProtocol](https://www.haproxy.org/download/1.8/doc/proxy-protoco
 Only IPs in `trustedIPs` will lead to remote client address replacement: you should declare your load-balancer IP or CIDR range here (in testing environment, you can trust everyone using `insecure = true`).
 
 !!! danger
-    When queuing Træfik behind another load-balancer, be sure to carefully configure Proxy Protocol on both sides.
+    When queuing Traefik behind another load-balancer, be sure to carefully configure Proxy Protocol on both sides.
     Otherwise, it could introduce a security risk in your system by forging requests.
 
 ```toml
@@ -636,12 +528,4 @@ Only IPs in `trustedIPs` will be authorized to trust the client forwarded header
       # Default: []
       #
       trustedIPs = ["127.0.0.1/32", "192.168.1.7"]
-      
-      # Insecure mode
-      #
-      # Optional
-      # Default: false
-      #
-      # insecure = true
-
 ```

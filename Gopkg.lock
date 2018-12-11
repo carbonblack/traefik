@@ -49,6 +49,7 @@
     "autorest",
     "autorest/adal",
     "autorest/azure",
+    "autorest/azure/auth",
     "autorest/date",
     "autorest/to"
   ]
@@ -152,6 +153,7 @@
     "store",
     "store/boltdb",
     "store/consul",
+    "store/etcd/v2",
     "store/etcd/v3",
     "store/zookeeper"
   ]
@@ -234,7 +236,6 @@
     "private/protocol/rest",
     "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
-    "service/lambda",
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
     "service/dynamodb/dynamodbiface",
@@ -283,14 +284,14 @@
     ".",
     "parse"
   ]
-  revision = "aad81c7ac7f49671a59b9ede8ab22436e132a302"
-  version = "v1.3.0"
+  revision = "c93d194b807ef171c43344d60adad8b58217390a"
+  version = "v1.4.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/containous/mux"
   packages = ["."]
-  revision = "06ccd3e75091eb659b1d720cda0e16bc7057954c"
+  revision = "c33f32e268983f989290677351b871b65da75ba5"
 
 [[projects]]
   name = "github.com/containous/staert"
@@ -313,15 +314,25 @@
   name = "github.com/coreos/etcd"
   packages = [
     "auth/authpb",
+    "client",
     "clientv3",
     "clientv3/concurrency",
     "etcdserver/api/v3rpc/rpctypes",
     "etcdserver/etcdserverpb",
     "mvcc/mvccpb",
-    "pkg/types"
+    "pkg/pathutil",
+    "pkg/srv",
+    "pkg/types",
+    "version"
   ]
   revision = "70c8726202dd91e482fb4029fd14af1d4ed1d5af"
   version = "v3.3.5"
+
+[[projects]]
+  name = "github.com/coreos/go-semver"
+  packages = ["semver"]
+  revision = "8ab6407b697782a06568d4b7f1db25550ec2e4c6"
+  version = "v0.2.0"
 
 [[projects]]
   name = "github.com/coreos/go-systemd"
@@ -352,6 +363,12 @@
   packages = ["."]
   revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
   version = "v3.2.0"
+
+[[projects]]
+  name = "github.com/dimchansky/utfbom"
+  packages = ["."]
+  revision = "5448fe645cb1964ba70ac8f9f2ffe975e61a536c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -524,19 +541,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  name = "github.com/edeckers/auroradnsclient"
-  packages = [
-    ".",
-    "records",
-    "requests",
-    "requests/errors",
-    "tokens",
-    "zones"
-  ]
-  revision = "1563e622aaca0a8bb895a448f31d4a430ab97586"
-  version = "v1.0.3"
-
-[[projects]]
   branch = "master"
   name = "github.com/elazarl/go-bindata-assetfs"
   packages = ["."]
@@ -560,6 +564,12 @@
   name = "github.com/fatih/color"
   packages = ["."]
   revision = "62e9147c64a1ed519147b62a56a14e83e2be02c1"
+
+[[projects]]
+  name = "github.com/fatih/structs"
+  packages = ["."]
+  revision = "4966fc68f5b7593aafa6cbbba2d65ec6e1416047"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -843,6 +853,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/kolo/xmlrpc"
+  packages = ["."]
+  revision = "16bdd962781df9696f40cc2bab924f1a855a7f89"
+
+[[projects]]
+  branch = "master"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
   revision = "b729f2633dfe35f4d1d8a32385f6685610ce1cb5"
@@ -852,6 +868,12 @@
   name = "github.com/kr/logfmt"
   packages = ["."]
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
+
+[[projects]]
+  name = "github.com/ldez/go-auroradns"
+  packages = ["."]
+  revision = "b40dfcae7c417f8129579362695dc1f3cfe5928d"
+  version = "v2.0.0"
 
 [[projects]]
   branch = "master"
@@ -979,10 +1001,10 @@
   revision = "2bca23e0e452137f789efbc8610126fd8b94f73b"
 
 [[projects]]
-  branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "b4575eea38cca1123ec2dc90c26529b5c5acfcff"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
 
 [[projects]]
   branch = "master"
@@ -1191,6 +1213,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/smueller18/goinwx"
+  packages = ["."]
+  revision = "5d138389109eca96463f44f692408f0d1c731278"
+
+[[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "cb88ea77998c3f024757528e3305022ab50b43be"
@@ -1238,6 +1266,16 @@
   version = "1.0.2"
 
 [[projects]]
+  name = "github.com/transip/gotransip"
+  packages = [
+    ".",
+    "domain",
+    "util"
+  ]
+  revision = "1dc93a7db3567a5ccf865106afac88278ba940cf"
+  version = "v5.8.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/tuvistavie/securerandom"
   packages = ["."]
@@ -1253,30 +1291,29 @@
   packages = [
     ".",
     "config",
-    "internal/baggage",
-    "internal/baggage/remote",
     "internal/spanlog",
-    "internal/throttler",
-    "internal/throttler/remote",
     "log",
     "rpcmetrics",
-    "thrift",
     "thrift-gen/agent",
-    "thrift-gen/baggage",
     "thrift-gen/jaeger",
     "thrift-gen/sampling",
     "thrift-gen/zipkincore",
-    "utils",
-    "zipkin"
+    "utils"
   ]
-  revision = "b043381d944715b469fd6b37addfd30145ca1758"
-  version = "v2.14.0"
+  revision = "3e3870040def0ebdaf65a003863fa64f5cb26139"
+  version = "v2.9.0"
 
 [[projects]]
   name = "github.com/uber/jaeger-lib"
   packages = ["metrics"]
-  revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
-  version = "v1.5.0"
+  revision = "3b2a9ad2a045881ab7a0f81d465be54c8292ee4f"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/ugorji/go"
+  packages = ["codec"]
+  revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/unrolled/render"
@@ -1313,7 +1350,7 @@
     "roundrobin",
     "utils"
   ]
-  revision = "7d94d212f808222b72fd0b8bb171bfcd4e27ffca"
+  revision = "c34b0c501e43223bc816ac9b40b0ac29c44c8952"
 
 [[projects]]
   name = "github.com/vulcand/predicate"
@@ -1353,6 +1390,7 @@
     "providers/dns/bluecat",
     "providers/dns/cloudflare",
     "providers/dns/cloudxns",
+    "providers/dns/conoha",
     "providers/dns/digitalocean",
     "providers/dns/dnsimple",
     "providers/dns/dnsmadeeasy",
@@ -1369,10 +1407,13 @@
     "providers/dns/glesys",
     "providers/dns/godaddy",
     "providers/dns/hostingde",
+    "providers/dns/httpreq",
     "providers/dns/iij",
+    "providers/dns/inwx",
     "providers/dns/lightsail",
     "providers/dns/linode",
     "providers/dns/linodev4",
+    "providers/dns/mydnsjp",
     "providers/dns/namecheap",
     "providers/dns/namedotcom",
     "providers/dns/netcup",
@@ -1385,11 +1426,14 @@
     "providers/dns/rfc2136",
     "providers/dns/route53",
     "providers/dns/sakuracloud",
+    "providers/dns/selectel",
     "providers/dns/stackpath",
+    "providers/dns/transip",
     "providers/dns/vegadns",
+    "providers/dns/vscale",
     "providers/dns/vultr"
   ]
-  revision = "160d6fe60303699067faad57dc0b1e147ac499ef"
+  revision = "a5f0a3ff8026e05cbdd11c391c0e25122497c736"
 
 [[projects]]
   branch = "master"
@@ -1401,6 +1445,8 @@
     "ed25519/internal/edwards25519",
     "ocsp",
     "pbkdf2",
+    "pkcs12",
+    "pkcs12/internal/rc2",
     "scrypt",
     "ssh/terminal"
   ]
@@ -1552,8 +1598,8 @@
     "ddtrace/opentracer",
     "ddtrace/tracer"
   ]
-  revision = "d052956664af54dbcff2712d10c67c76fbfc299f"
-  version = "v1.0.0"
+  revision = "48eeff27357376bcb31a15674dc4be9078de88b3"
+  version = "v1.5.0"
 
 [[projects]]
   name = "gopkg.in/fsnotify.v1"
@@ -1812,7 +1858,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "37e89a543fca153d166cc70fd7fed689f06d894140bf617f69f5f664ffee621e"
+  inputs-digest = "26517fdb01d55f549e4692c251587c90f657b7736e2951d673a530f3b86a90fb"
   solver-name = "gps-cdcl"
   solver-version = 1
-  

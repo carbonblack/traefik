@@ -1,6 +1,6 @@
 # ECS Provider
 
-Træfik can be configured to use Amazon ECS as a provider.
+Traefik can be configured to use Amazon ECS as a provider.
 
 ## Configuration
 
@@ -11,6 +11,12 @@ Træfik can be configured to use Amazon ECS as a provider.
 
 # Enable ECS Provider.
 [ecs]
+
+# ECS Cluster Name.
+#
+# DEPRECATED - Please use `clusters`.
+#
+cluster = "default"
 
 # ECS Clusters Name.
 #
@@ -100,7 +106,7 @@ To enable constraints see [provider-specific constraints section](/configuration
 
 ## Policy
 
-Træfik needs the following policy to read ECS information:
+Traefik needs the following policy to read ECS information:
 
 ```json
 {
@@ -126,14 +132,14 @@ Træfik needs the following policy to read ECS information:
 }
 ```
 
-## Labels: overriding default behavior
+## Labels: overriding default behaviour
 
-Labels can be used on task containers to override default behavior:
+Labels can be used on task containers to override default behaviour:
 
 | Label                                                               | Description                                                                                                                                                                                                                   |
 |---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `traefik.domain`                                                    | Sets the default domain for frontend rules.                                                                                                                                                                                   |
-| `traefik.enable=false`                                              | Disables this container in Træfik.                                                                                                                                                                                            |
+| `traefik.domain`                                                    | Sets the default base domain for frontend rules.                                                                                                                                                                                   |
+| `traefik.enable=false`                                              | Disables this container in Traefik.                                                                                                                                                                                            |
 | `traefik.port=80`                                                   | Overrides the default `port` value. Overrides `NetworkBindings` from Docker Container                                                                                                                                         |
 | `traefik.protocol=https`                                            | Overrides the default `http` protocol                                                                                                                                                                                         |
 | `traefik.weight=10`                                                 | Assigns this weight to the container                                                                                                                                                                                          |
@@ -144,9 +150,9 @@ Labels can be used on task containers to override default behavior:
 | `traefik.backend.buffering.memResponseBodyBytes=0`                  | See [buffering](/configuration/commons/#buffering) section.                                                                                                                                                                   |
 | `traefik.backend.buffering.retryExpression=EXPR`                    | See [buffering](/configuration/commons/#buffering) section.                                                                                                                                                                   |
 | `traefik.backend.circuitbreaker.expression=EXPR`                    | Creates a [circuit breaker](/basics/#backends) to be used against the backend                                                                                                                                                 |
+| `traefik.backend.responseForwarding.flushInterval=10ms`            | Defines the interval between two flushes when forwarding response from backend to client.                                                                                                                                     |
 | `traefik.backend.healthcheck.path=/health`                          | Enables health check for the backend, hitting the container at `path`.                                                                                                                                                        |
-| `traefik.backend.healthcheck.interval=5s`                           | Defines the health check interval. (Default: 30s)                                                                                                                                                                             |
-| `traefik.backend.healthcheck.timeout=3s`                            | Defines the health check request timeout. (Default: 5s)                                                                                                                                                                       |
+| `traefik.backend.healthcheck.interval=1s`                           | Defines the health check interval. (Default: 30s)                                                                                                                                                                             |
 | `traefik.backend.healthcheck.scheme=http`                           | Overrides the server URL scheme.                                                                                                                                                                                              |
 | `traefik.backend.healthcheck.port=8080`                             | Sets a different port for the health check.                                                                                                                                                                                   |
 | `traefik.backend.healthcheck.hostname=foobar.com`                   | Defines the health check hostname.                                                                                                                                                                                            |
@@ -154,6 +160,7 @@ Labels can be used on task containers to override default behavior:
 | `traefik.backend.loadbalancer.method=drr`                           | Overrides the default `wrr` load balancer algorithm                                                                                                                                                                           |
 | `traefik.backend.loadbalancer.stickiness=true`                      | Enables backend sticky sessions                                                                                                                                                                                               |
 | `traefik.backend.loadbalancer.stickiness.cookieName=NAME`           | Sets the cookie manually  name for sticky sessions                                                                                                                                                                            |
+| `traefik.backend.loadbalancer.sticky=true`                          | Enables backend sticky sessions (DEPRECATED)                                                                                                                                                                                  |
 | `traefik.backend.maxconn.amount=10`                                 | Sets a maximum number of connections to the backend.<br>Must be used in conjunction with the below label to take effect.                                                                                                      |
 | `traefik.backend.maxconn.extractorfunc=client.ip`                   | Sets the function to be used against the request to determine what to limit maximum connections to the backend by.<br>Must be used in conjunction with the above label to take effect.                                        |
 | `traefik.frontend.auth.basic=EXPR`                                  | Sets basic authentication to this frontend in CSV format: `User:Hash,User:Hash` (DEPRECATED).                                                                                                                                 |
@@ -182,8 +189,8 @@ Labels can be used on task containers to override default behavior:
 | `traefik.frontend.passTLSClientCert.infos.subject.organization=true`| Add the subject.organization field in a escaped client infos in the `X-Forwarded-Ssl-Client-Cert-Infos` header.                                                                                                               |
 | `traefik.frontend.passTLSClientCert.infos.subject.province=true`    | Add the subject.province field in a escaped client infos in the `X-Forwarded-Ssl-Client-Cert-Infos` header.                                                                                                                   |
 | `traefik.frontend.passTLSClientCert.infos.subject.serialNumber=true`| Add the subject.serialNumber field in a escaped client infos in the `X-Forwarded-Ssl-Client-Cert-Infos` header.                                                                                                               |
-| `traefik.frontend.passTLSClientCert.pem=true`                       | Pass the escaped pem in the `X-Forwarded-Ssl-Client-Cert` header.                                                                                                                                                             |
-| `traefik.frontend.entryPoints=http,https`                           | Assigns this frontend to entry points `http` and `https`.<br>Overrides `defaultEntryPoints`                                                                                                                                   |
+| `traefik.frontend.passTLSClientCert.pem=true`                       | Pass the escaped pem in the `X-Forwarded-Ssl-Client-Cert` header.                                                                                                                                                           |
+| `traefik.frontend.entryPoints=http,https`                           | Assigns this frontend to entry points `http` and `https`.<br>Overrides `defaultEntryPoints`                                                                                                                               |
 | `traefik.frontend.errors.<name>.backend=NAME`                       | See [custom error pages](/configuration/commons/#custom-error-pages) section.                                                                                                                                                 |
 | `traefik.frontend.errors.<name>.query=PATH`                         | See [custom error pages](/configuration/commons/#custom-error-pages) section.                                                                                                                                                 |
 | `traefik.frontend.errors.<name>.status=RANGE`                       | See [custom error pages](/configuration/commons/#custom-error-pages) section.                                                                                                                                                 |
@@ -200,9 +207,7 @@ Labels can be used on task containers to override default behavior:
 | `traefik.frontend.redirect.permanent=true`                          | Returns 301 instead of 302.                                                                                                                                                                                                   |
 | `traefik.frontend.rule=EXPR`                                        | Overrides the default frontend rule. Default: `Host:{instance_name}.{domain}`.                                                                                                                                                |
 | `traefik.frontend.whiteList.sourceRange=RANGE`                      | Sets a list of IP-Ranges which are allowed to access.<br>An unset or empty list allows all Source-IPs to access. If one of the Net-Specifications are invalid, the whole list is invalid and allows all Source-IPs to access. |
-| `traefik.frontend.whiteList.ipStrategy=true`                        | Uses the default IPStrategy.<br>Can be used when there is an existing `clientIPStrategy` but you want the remote address for whitelisting.                                                                                    |
-| `traefik.frontend.whiteList.ipStrategy.depth=5`                     | See [whitelist](/configuration/entrypoints/#white-listing)                                                                                                                                                                    |
-| `traefik.frontend.whiteList.ipStrategy.excludedIPs=127.0.0.1`       | See [whitelist](/configuration/entrypoints/#white-listing)                                                                                                                                                                    |
+| `traefik.frontend.whiteList.useXForwardedFor=true`                  | Uses `X-Forwarded-For` header as valid source of IP for the white list.                                                                                                                                                       |
 
 ### Custom Headers
 
@@ -224,7 +229,7 @@ Labels can be used on task containers to override default behavior:
 | `traefik.frontend.headers.forceSTSHeader=false`          | Adds the STS  header to non-SSL requests.                                                                                                                                                           |
 | `traefik.frontend.headers.frameDeny=false`               | Adds the `X-Frame-Options` header with the value of `DENY`.                                                                                                                                         |
 | `traefik.frontend.headers.hostsProxyHeaders=EXPR `       | Provides a list of headers that the proxied hostname may be stored.<br>Format: `HEADER1,HEADER2`                                                                                                    |
-| `traefik.frontend.headers.publicKey=VALUE`               | Adds pinned HTST public key header.                                                                                                                                                                 |
+| `traefik.frontend.headers.publicKey=VALUE`               | Adds HPKP header.                                                                                                                                                                                   |
 | `traefik.frontend.headers.referrerPolicy=VALUE`          | Adds referrer policy  header.                                                                                                                                                                       |
 | `traefik.frontend.headers.isDevelopment=false`           | This will cause the `AllowedHosts`, `SSLRedirect`, and `STSSeconds`/`STSIncludeSubdomains` options to be ignored during development.<br>When deploying to production, be sure to set this to false. |
 | `traefik.frontend.headers.SSLRedirect=true`              | Forces the frontend to redirect to SSL if a non-SSL request is sent.                                                                                                                                |
@@ -296,9 +301,6 @@ Segment labels override the default behavior.
 | `traefik.<segment_name>.frontend.rule=EXP`                                          | Same as `traefik.frontend.rule`                                         |
 | `traefik.<segment_name>.frontend.whiteList.sourceRange=RANGE`                       | Same as `traefik.frontend.whiteList.sourceRange`                        |
 | `traefik.<segment_name>.frontend.whiteList.useXForwardedFor=true`                   | Same as `traefik.frontend.whiteList.useXForwardedFor`                   |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy=true`                         | Same as `traefik.frontend.whiteList.ipStrategy`                         |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy.depth=5`                      | Same as `traefik.frontend.whiteList.ipStrategy.depth`                   |
-| `traefik.<segment_name>.frontend.whiteList.ipStrategy.excludedIPs=127.0.0.1`        | Same as `traefik.frontend.whiteList.ipStrategy.excludedIPs`             |
 
 #### Custom Headers
 

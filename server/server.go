@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -350,10 +351,14 @@ func (s *Server) listenProviders(stop chan bool) {
 		case <-stop:
 			return
 		case configMsg, ok := <-s.configurationChan:
-			if !ok || configMsg.Configuration == nil {
+			if !ok {
 				return
 			}
-			s.preLoadConfiguration(configMsg)
+			if configMsg.Configuration != nil {
+				s.preLoadConfiguration(configMsg)
+			} else {
+				log.Debugf("Received nil configuration from provider %q, skipping.", configMsg.ProviderName)
+			}
 		}
 	}
 }
@@ -625,7 +630,7 @@ func buildProxyProtocolListener(entryPoint *configuration.EntryPoint, listener n
 
 func (s *Server) buildInternalRouter(entryPointName string) *mux.Router {
 	internalMuxRouter := mux.NewRouter()
-	internalMuxRouter.StrictSlash(true)
+	internalMuxRouter.StrictSlash(!s.globalConfiguration.KeepTrailingSlash)
 	internalMuxRouter.SkipClean(true)
 
 	if entryPoint, ok := s.entryPoints[entryPointName]; ok && entryPoint.InternalRouter != nil {
@@ -701,13 +706,13 @@ func (s *Server) buildNameOrIPToCertificate(certs []tls.Certificate) map[string]
 			continue
 		}
 		if len(x509Cert.Subject.CommonName) > 0 {
-			certMap[x509Cert.Subject.CommonName] = cert
+			certMap[strings.ToLower(x509Cert.Subject.CommonName)] = cert
 		}
 		for _, san := range x509Cert.DNSNames {
-			certMap[san] = cert
+			certMap[strings.ToLower(san)] = cert
 		}
 		for _, ipSan := range x509Cert.IPAddresses {
-			certMap[ipSan.String()] = cert
+			certMap[strings.ToLower(ipSan.String())] = cert
 		}
 	}
 	return certMap

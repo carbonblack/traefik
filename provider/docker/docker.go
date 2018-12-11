@@ -30,22 +30,21 @@ import (
 const (
 	// SwarmAPIVersion is a constant holding the version of the Provider API traefik will use
 	SwarmAPIVersion = "1.24"
-	// SwarmDefaultWatchTime is the duration of the interval when polling docker
-	SwarmDefaultWatchTime = 15 * time.Second
 )
 
 var _ provider.Provider = (*Provider)(nil)
 
 // Provider holds configurations of the provider.
 type Provider struct {
-	provider.BaseProvider `mapstructure:",squash" export:"true"`
-	Endpoint              string           `description:"Docker server endpoint. Can be a tcp or a unix socket endpoint"`
-	Domain                string           `description:"Default domain used"`
-	TLS                   *types.ClientTLS `description:"Enable Docker TLS support" export:"true"`
-	ExposedByDefault      bool             `description:"Expose containers by default" export:"true"`
-	UseBindPortIP         bool             `description:"Use the ip address from the bound port, rather than from the inner network" export:"true"`
-	SwarmMode             bool             `description:"Use Docker on Swarm Mode" export:"true"`
-	Network               string           `description:"Default Docker network used" export:"true"`
+	provider.BaseProvider   `mapstructure:",squash" export:"true"`
+	Endpoint                string           `description:"Docker server endpoint. Can be a tcp or a unix socket endpoint"`
+	Domain                  string           `description:"Default domain used"`
+	TLS                     *types.ClientTLS `description:"Enable Docker TLS support" export:"true"`
+	ExposedByDefault        bool             `description:"Expose containers by default" export:"true"`
+	UseBindPortIP           bool             `description:"Use the ip address from the bound port, rather than from the inner network" export:"true"`
+	SwarmMode               bool             `description:"Use Docker on Swarm Mode" export:"true"`
+	Network                 string           `description:"Default Docker network used" export:"true"`
+	SwarmModeRefreshSeconds int              `description:"Polling interval for swarm mode (in seconds)" export:"true"`
 }
 
 // Init the provider
@@ -97,6 +96,7 @@ func (p *Provider) createClient() (client.APIClient, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		if err := sockets.ConfigureTransport(tr, hostURL.Scheme, hostURL.Host); err != nil {
 			return nil, err
 		}
@@ -123,18 +123,17 @@ func (p *Provider) createClient() (client.APIClient, error) {
 // Provide allows the docker provider to provide configurations to traefik
 // using the given configuration channel.
 func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *safe.Pool) error {
-	// TODO register this routine in pool, and watch for stop channel
-	safe.Go(func() {
+	pool.GoCtx(func(routineCtx context.Context) {
 		operation := func() error {
 			var err error
-
+			ctx, cancel := context.WithCancel(routineCtx)
+			defer cancel()
 			dockerClient, err := p.createClient()
 			if err != nil {
 				log.Errorf("Failed to create a client for docker, error: %s", err)
 				return err
 			}
 
-			ctx := context.Background()
 			serverVersion, err := dockerClient.ServerVersion(ctx)
 			if err != nil {
 				log.Errorf("Failed to retrieve information of the docker client and server host: %s", err)
@@ -162,12 +161,11 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 				Configuration: configuration,
 			}
 			if p.Watch {
-				ctx, cancel := context.WithCancel(ctx)
 				if p.SwarmMode {
 					errChan := make(chan error)
 					// TODO: This need to be change. Linked to Swarm events docker/docker#23827
-					ticker := time.NewTicker(SwarmDefaultWatchTime)
-					pool.Go(func(stop chan bool) {
+					ticker := time.NewTicker(time.Second * time.Duration(p.SwarmModeRefreshSeconds))
+					pool.GoCtx(func(ctx context.Context) {
 						defer close(errChan)
 						for {
 							select {
@@ -186,9 +184,8 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 									}
 								}
 
-							case <-stop:
+							case <-ctx.Done():
 								ticker.Stop()
-								cancel()
 								return
 							}
 						}
@@ -199,10 +196,6 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 					// channel closed
 
 				} else {
-					pool.Go(func(stop chan bool) {
-						<-stop
-						cancel()
-					})
 					f := filters.NewArgs()
 					f.Add("type", "container")
 					options := dockertypes.EventsOptions{
@@ -215,15 +208,19 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 						if err != nil {
 							log.Errorf("Failed to list containers for docker, error %s", err)
 							// Call cancel to get out of the monitor
-							cancel()
 							return
 						}
 						configuration := p.buildConfiguration(containers)
 						if configuration != nil {
-							configurationChan <- types.ConfigMessage{
+							message := types.ConfigMessage{
 								ProviderName:  "docker",
 								Configuration: configuration,
 							}
+							select {
+							case configurationChan <- message:
+							case <-ctx.Done():
+							}
+
 						}
 					}
 
@@ -240,8 +237,9 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 							if err == io.EOF {
 								log.Debug("Provider event stream closed")
 							}
-
 							return err
+						case <-ctx.Done():
+							return nil
 						}
 					}
 				}
@@ -251,7 +249,7 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 		notify := func(err error, time time.Duration) {
 			log.Errorf("Provider connection error %+v, retrying in %s", err, time)
 		}
-		err := backoff.RetryNotify(safe.OperationWithRecover(operation), job.NewBackOff(backoff.NewExponentialBackOff()), notify)
+		err := backoff.RetryNotify(safe.OperationWithRecover(operation), backoff.WithContext(job.NewBackOff(backoff.NewExponentialBackOff()), routineCtx), notify)
 		if err != nil {
 			log.Errorf("Cannot connect to docker server %+v", err)
 		}
@@ -398,7 +396,7 @@ func parseService(service swarmtypes.Service, networkMap map[string]*dockertypes
 	if service.Spec.EndpointSpec != nil {
 		if service.Spec.EndpointSpec.Mode == swarmtypes.ResolutionModeDNSRR {
 			if isBackendLBSwarm(dData) {
-				log.Warnf("Ignored %s endpoint-mode not supported, service name: %s. Fallback to Træfik load balancing", swarmtypes.ResolutionModeDNSRR, service.Spec.Annotations.Name)
+				log.Warnf("Ignored %s endpoint-mode not supported, service name: %s. Fallback to Traefik load balancing", swarmtypes.ResolutionModeDNSRR, service.Spec.Annotations.Name)
 			}
 		} else if service.Spec.EndpointSpec.Mode == swarmtypes.ResolutionModeVIP {
 			dData.NetworkSettings.Networks = make(map[string]*networkData)
