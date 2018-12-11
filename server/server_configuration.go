@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
 	"github.com/vulcand/oxy/forward"
+	"net/url"
 )
 
 // loadConfiguration manages dynamically frontends, backends and TLS configurations
@@ -229,33 +230,57 @@ func (s *Server) buildForwarder(entryPointName string, entryPoint *configuration
 		return nil, fmt.Errorf("error creating rewriter for frontend %s: %v", frontendName, err)
 	}
 
-	var flushInterval parse.Duration
-	if backend.ResponseForwarding != nil {
-		err := flushInterval.Set(backend.ResponseForwarding.FlushInterval)
+	var fwd http.Handler
+	var isLambda = false
+	for _, srv := range backend.Servers {
+		u, err := url.Parse(srv.URL)
 		if err != nil {
-			return nil, fmt.Errorf("error creating flush interval for frontend %s: %v", frontendName, err)
+			log.Errorf("Error parsing server URL %s: %v", srv.URL, err)
+			log.Errorf("Skipping frontend %s...", frontendName)
+			return nil, fmt.Errorf("Error parsing server URL %s: %v", frontendName, err)
 		}
+
+		if u.Scheme == "lambda" {
+			isLambda = true
+		}
+
+		if isLambda && u.Scheme != "lambda" {
+			log.Errorf("Backend can not have lambda and non-lambda servers at the same time %s", frontend.Backend)
+			log.Errorf("Skipping frontend %s...", frontendName)
+			return nil, fmt.Errorf("Backend can not have lambda and non-lambda servers at the same time %s", frontend.Backend)
+		}
+
 	}
 
-	var fwd http.Handler
-	fwd, err = forward.New(
-		forward.Stream(true),
-		forward.PassHostHeader(frontend.PassHostHeader),
-		forward.RoundTripper(roundTripper),
-		forward.Rewriter(rewriter),
-		forward.ResponseModifier(responseModifier),
-		forward.BufferPool(s.bufferPool),
-		forward.StreamingFlushInterval(time.Duration(flushInterval)),
-		forward.WebsocketConnectionClosedHook(func(req *http.Request, conn net.Conn) {
-			server := req.Context().Value(http.ServerContextKey).(*http.Server)
-			if server != nil {
-				connState := server.ConnState
-				if connState != nil {
-					connState(conn, http.StateClosed)
-				}
+	if isLambda {
+		fwd = middlewares.NewLambda(fwd)
+	} else {
+		var flushInterval parse.Duration
+		if backend.ResponseForwarding != nil {
+			err := flushInterval.Set(backend.ResponseForwarding.FlushInterval)
+			if err != nil {
+				return nil, fmt.Errorf("error creating flush interval for frontend %s: %v", frontendName, err)
 			}
-		}),
-	)
+		}	
+		fwd, err = forward.New(
+			forward.Stream(true),
+			forward.PassHostHeader(frontend.PassHostHeader),
+			forward.RoundTripper(roundTripper),
+			forward.Rewriter(rewriter),
+			forward.ResponseModifier(responseModifier),
+			forward.BufferPool(s.bufferPool),
+			forward.StreamingFlushInterval(time.Duration(flushInterval)),
+			forward.WebsocketConnectionClosedHook(func(req *http.Request, conn net.Conn) {
+				server := req.Context().Value(http.ServerContextKey).(*http.Server)
+				if server != nil {
+					connState := server.ConnState
+					if connState != nil {
+						connState(conn, http.StateClosed)
+					}
+				}
+			}),
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating forwarder for frontend %s: %v", frontendName, err)
 	}
