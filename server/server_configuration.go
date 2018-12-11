@@ -249,31 +249,32 @@ func (s *Server) buildForwarder(entryPointName string, entryPoint *configuration
 	if isLambda {
 		fwd = middlewares.NewLambda(fwd)
 	} else {
-	var flushInterval parse.Duration
-	if backend.ResponseForwarding != nil {
-		err := flushInterval.Set(backend.ResponseForwarding.FlushInterval)
-		if err != nil {
-			return nil, fmt.Errorf("error creating flush interval for frontend %s: %v", frontendName, err)
-		}
-	}
-	fwd, err = forward.New(
-		forward.Stream(true),
-		forward.PassHostHeader(frontend.PassHostHeader),
-		forward.RoundTripper(roundTripper),
-		forward.Rewriter(rewriter),
-		forward.ResponseModifier(responseModifier),
-		forward.BufferPool(s.bufferPool),
-		forward.StreamingFlushInterval(time.Duration(flushInterval)),
-		forward.WebsocketConnectionClosedHook(func(req *http.Request, conn net.Conn) {
-			server := req.Context().Value(http.ServerContextKey).(*http.Server)
-			if server != nil {
-				connState := server.ConnState
-				if connState != nil {
-					connState(conn, http.StateClosed)
-				}
+		var flushInterval parse.Duration
+		if backend.ResponseForwarding != nil {
+			err := flushInterval.Set(backend.ResponseForwarding.FlushInterval)
+			if err != nil {
+				return nil, fmt.Errorf("error creating flush interval for frontend %s: %v", frontendName, err)
 			}
-		}),
-	)
+		}
+		fwd, err = forward.New(
+			forward.Stream(true),
+			forward.PassHostHeader(frontend.PassHostHeader),
+			forward.RoundTripper(roundTripper),
+			forward.Rewriter(rewriter),
+			forward.ResponseModifier(responseModifier),
+			forward.BufferPool(s.bufferPool),
+			forward.StreamingFlushInterval(time.Duration(flushInterval)),
+			forward.WebsocketConnectionClosedHook(func(req *http.Request, conn net.Conn) {
+				server := req.Context().Value(http.ServerContextKey).(*http.Server)
+				if server != nil {
+					connState := server.ConnState
+					if connState != nil {
+						connState(conn, http.StateClosed)
+					}
+				}
+			}),
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating forwarder for frontend %s: %v", frontendName, err)
 	}
