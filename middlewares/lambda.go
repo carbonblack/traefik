@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/containous/traefik/middlewares/tracing"
+	"github.com/containous/traefik/log"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -91,71 +92,27 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-
-		/*			switch aerr.Code() {
-					case lambda.ErrCodeServiceException:
-						fmt.Println(lambda.ErrCodeServiceException, aerr.Error())
-					case lambda.ErrCodeResourceNotFoundException:
-						fmt.Println(lambda.ErrCodeResourceNotFoundException, aerr.Error())
-					case lambda.ErrCodeInvalidRequestContentException:
-						fmt.Println(lambda.ErrCodeInvalidRequestContentException, aerr.Error())
-					case lambda.ErrCodeRequestTooLargeException:
-						fmt.Println(lambda.ErrCodeRequestTooLargeException, aerr.Error())
-					case lambda.ErrCodeUnsupportedMediaTypeException:
-						fmt.Println(lambda.ErrCodeUnsupportedMediaTypeException, aerr.Error())
-					case lambda.ErrCodeTooManyRequestsException:
-						fmt.Println(lambda.ErrCodeTooManyRequestsException, aerr.Error())
-					case lambda.ErrCodeInvalidParameterValueException:
-						fmt.Println(lambda.ErrCodeInvalidParameterValueException, aerr.Error())
-					case lambda.ErrCodeEC2UnexpectedException:
-						fmt.Println(lambda.ErrCodeEC2UnexpectedException, aerr.Error())
-					case lambda.ErrCodeSubnetIPAddressLimitReachedException:
-						fmt.Println(lambda.ErrCodeSubnetIPAddressLimitReachedException, aerr.Error())
-					case lambda.ErrCodeENILimitReachedException:
-						fmt.Println(lambda.ErrCodeENILimitReachedException, aerr.Error())
-					case lambda.ErrCodeEC2ThrottledException:
-						fmt.Println(lambda.ErrCodeEC2ThrottledException, aerr.Error())
-					case lambda.ErrCodeEC2AccessDeniedException:
-						fmt.Println(lambda.ErrCodeEC2AccessDeniedException, aerr.Error())
-					case lambda.ErrCodeInvalidSubnetIDException:
-						fmt.Println(lambda.ErrCodeInvalidSubnetIDException, aerr.Error())
-					case lambda.ErrCodeInvalidSecurityGroupIDException:
-						fmt.Println(lambda.ErrCodeInvalidSecurityGroupIDException, aerr.Error())
-					case lambda.ErrCodeInvalidZipFileException:
-						fmt.Println(lambda.ErrCodeInvalidZipFileException, aerr.Error())
-					case lambda.ErrCodeKMSDisabledException:
-						fmt.Println(lambda.ErrCodeKMSDisabledException, aerr.Error())
-					case lambda.ErrCodeKMSInvalidStateException:
-						fmt.Println(lambda.ErrCodeKMSInvalidStateException, aerr.Error())
-					case lambda.ErrCodeKMSAccessDeniedException:
-						fmt.Println(lambda.ErrCodeKMSAccessDeniedException, aerr.Error())
-					case lambda.ErrCodeKMSNotFoundException:
-						fmt.Println(lambda.ErrCodeKMSNotFoundException, aerr.Error())
-					case lambda.ErrCodeInvalidRuntimeException:
-						fmt.Println(lambda.ErrCodeInvalidRuntimeException, aerr.Error())
-					default:
-						fmt.Println(aerr.Error())
-					}
-		*/
-
 		aerr := err.(awserr.Error)
 		tracing.LogResponseCode(tracing.GetSpan(r), 400)
 		rw.WriteHeader(400)
 		rw.Write([]byte(aerr.Code() + aerr.Error()))
 		return
-
 	}
 
 	rw.Header().Del("X-User-Context")
 	rw.Header().Del("X-Request-Context")
 	var objMap map[string]*json.RawMessage
-	err = json.Unmarshal(resp.Payload, &objMap)
 	statusCode := 200
-	if err != nil {
+
+	err = json.Unmarshal(resp.Payload, &objMap)
+	if err == nil {
 		if val, ok := objMap["statusCode"]; ok {
 			statusCode, _ = strconv.Atoi(string(*val))
 		}
+	} else {
+		log.Errorf("Fail to parse response status code: %v", err)
 	}
+
 	tracing.LogResponseCode(tracing.GetSpan(r), statusCode)
 	rw.WriteHeader(statusCode)
 	rw.Write(resp.Payload)
