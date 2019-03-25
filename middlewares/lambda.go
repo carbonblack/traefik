@@ -145,10 +145,10 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	}
 
-	tracing.LogResponseCode(tracing.GetSpan(r), r.Response.StatusCode)
+	tracing.LogResponseCode(tracing.GetSpan(r), int(*resp.StatusCode))
 	rw.Header().Del("X-User-Context")
 	rw.Header().Del("X-Request-Context")
-	rw.WriteHeader(r.Response.StatusCode)
+	rw.WriteHeader(int(*resp.StatusCode))
 	rw.Write(resp.Payload)
 	return
 }
