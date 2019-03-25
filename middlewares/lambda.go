@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strconv"
 )
 
 // Lambda
@@ -145,10 +146,18 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	}
 
-	tracing.LogResponseCode(tracing.GetSpan(r), int(*resp.StatusCode))
 	rw.Header().Del("X-User-Context")
 	rw.Header().Del("X-Request-Context")
-	rw.WriteHeader(int(*resp.StatusCode))
+	var objMap map[string]*json.RawMessage
+	err = json.Unmarshal(resp.Payload, &objMap)
+	statusCode := 200
+	if err != nil {
+		if val, ok := objMap["statusCode"]; ok {
+			statusCode, _ = strconv.Atoi(string(*val))
+		}
+	}
+	tracing.LogResponseCode(tracing.GetSpan(r), statusCode)
+	rw.WriteHeader(statusCode)
 	rw.Write(resp.Payload)
 	return
 }
