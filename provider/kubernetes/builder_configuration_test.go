@@ -230,9 +230,25 @@ func auth(opt func(*types.Auth)) func(*types.Frontend) {
 	}
 }
 
-func basicAuth(users ...string) func(*types.Auth) {
+func basicAuth(opts ...func(*types.Basic)) func(*types.Auth) {
 	return func(a *types.Auth) {
-		a.Basic = &types.Basic{Users: users}
+		basic := &types.Basic{}
+		for _, opt := range opts {
+			opt(basic)
+		}
+		a.Basic = basic
+	}
+}
+
+func baUsers(users ...string) func(*types.Basic) {
+	return func(b *types.Basic) {
+		b.Users = users
+	}
+}
+
+func baRemoveHeaders() func(*types.Basic) {
+	return func(b *types.Basic) {
+		b.RemoveHeader = true
 	}
 }
 
@@ -403,13 +419,23 @@ func passTLSClientCert() func(*types.Frontend) {
 			Infos: &types.TLSClientCertificateInfos{
 				NotAfter:  true,
 				NotBefore: true,
-				Subject: &types.TLSCLientCertificateSubjectInfos{
-					Country:      true,
-					Province:     true,
-					Locality:     true,
-					Organization: true,
-					CommonName:   true,
-					SerialNumber: true,
+				Subject: &types.TLSCLientCertificateDNInfos{
+					CommonName:      true,
+					Country:         true,
+					DomainComponent: true,
+					Locality:        true,
+					Organization:    true,
+					Province:        true,
+					SerialNumber:    true,
+				},
+				Issuer: &types.TLSCLientCertificateDNInfos{
+					CommonName:      true,
+					Country:         true,
+					DomainComponent: true,
+					Locality:        true,
+					Organization:    true,
+					Province:        true,
+					SerialNumber:    true,
 				},
 				Sans: true,
 			},

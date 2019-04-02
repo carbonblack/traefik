@@ -19,6 +19,11 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
+
 [[constraint]]
   branch = "master"
   name = "github.com/ArthurHlt/go-eureka-client"
@@ -41,6 +46,11 @@
   source = "github.com/containous/go-http-auth"
 
 [[constraint]]
+  name = "github.com/thoas/stats"
+  # related to https://github.com/thoas/stats/pull/32
+  revision = "4975baf6a358ed3ddaa42133996e1959f96c9300"
+
+[[constraint]]
   branch = "master"
   name = "github.com/armon/go-proxyproto"
 
@@ -49,8 +59,8 @@
   version = "1.13.11"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/cenk/backoff"
+  version = "v2.1.1"
 
 [[constraint]]
   name = "github.com/containous/flaeg"
@@ -66,7 +76,7 @@
 
 [[constraint]]
   name = "github.com/containous/traefik-extra-service-fabric"
-  version = "1.3.0"
+  version = "v1.5.0"
 
 [[constraint]]
   name = "github.com/coreos/go-systemd"
@@ -112,8 +122,8 @@
   version = "1.3.7"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/jjcollinge/servicefabric"
+  revision = "8eebe170fa1ba25d3dfb928b3f86a7313b13b9fe"
 
 [[constraint]]
   branch = "master"
@@ -122,18 +132,6 @@
 [[constraint]]
   name = "github.com/mesosphere/mesos-dns"
   source = "https://github.com/containous/mesos-dns.git"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/mitchellh/copystructure"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/mitchellh/hashstructure"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/mitchellh/mapstructure"
 
 [[constraint]]
   name = "github.com/opentracing/opentracing-go"
@@ -162,7 +160,7 @@
 
 [[constraint]]
   name = "github.com/uber/jaeger-client-go"
-  version = "2.9.0"
+  version = "2.15.0"
 
 [[constraint]]
   name = "github.com/uber/jaeger-lib"
@@ -181,9 +179,8 @@
   name = "github.com/vulcand/oxy"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/xenolf/lego"
-#  version = "1.0.0"
+  name = "github.com/go-acme/lego"
+  version = "2.4.0"
 
 [[constraint]]
   name = "google.golang.org/grpc"
@@ -249,13 +246,8 @@
   revision = "7e6055773c5137efbeb3bd2410d705fe10ab6bfd"
 
 [[override]]
-  branch = "master"
+  version = "v1.1.1"
   name = "github.com/miekg/dns"
-
-[prune]
-  non-go = true
-  go-tests = true
-  unused-packages = true
 
 [[constraint]]
   name = "github.com/patrickmn/go-cache"
@@ -263,4 +255,4 @@
 
 [[constraint]]
   name = "gopkg.in/DataDog/dd-trace-go.v1"
-  version = "1.5.0"
+  version = "1.7.0"

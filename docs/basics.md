@@ -95,6 +95,7 @@ Following is the list of existing modifier rules:
 Matcher rules determine if a particular request should be forwarded to a backend.
 
 The associativity rule is the following:
+
 - `,` is the `OR` operator (works **only inside a matcher**, ex: `Host:foo.com,bar.com`).
     - i.e., forward a request if any rule matches.
     - Does not work for `Headers` and `HeadersRegexp`.
@@ -236,7 +237,8 @@ The following rules are both `Matchers` and `Modifiers`, so the `Matcher` portio
 #### Priorities
 
 By default, routes will be sorted (in descending order) using rules length (to avoid path overlap):
-`PathPrefix:/foo;Host:foo.com` (length == 28) will be matched before `PathPrefixStrip:/foobar` (length == 23) will be matched before `PathPrefix:/foo,/bar` (length == 20).
+- `PathPrefix:/foo;Host:foo.com` (length == 28) will be matched before `PathPrefixStrip:/foobar` (length == 23) will be matched before `PathPrefix:/foo,/bar` (length == 20).  
+- A priority value of 0 will be ignored, so the default value will be calculated (rules length).
 
 You can customize priority by frontend. The priority value override the rule length during sorting:
 
@@ -744,7 +746,7 @@ Once a day (the first call begins 10 minutes after the start of Traefik), we col
 
 ### Show me the code !
 
-If you want to dig into more details, here is the source code of the collecting system: [collector.go](https://github.com/containous/traefik/blob/master/collector/collector.go)
+If you want to dig into more details, here is the source code of the collecting system: [collector.go](https://github.com/containous/traefik/blob/v1.7/collector/collector.go)
 
 By default we anonymize all configuration fields, except fields tagged with `export=true`.
 

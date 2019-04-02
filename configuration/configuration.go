@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/containous/flaeg"
-	"github.com/containous/traefik-extra-service-fabric"
+	servicefabric "github.com/containous/traefik-extra-service-fabric"
 	"github.com/containous/traefik/acme"
 	"github.com/containous/traefik/api"
 	"github.com/containous/traefik/log"
@@ -33,8 +33,9 @@ import (
 	"github.com/containous/traefik/provider/zk"
 	"github.com/containous/traefik/tls"
 	"github.com/containous/traefik/types"
+	"github.com/go-acme/lego/challenge/dns01"
 	"github.com/pkg/errors"
-	lego "github.com/xenolf/lego/acme"
+	jaegercli "github.com/uber/jaeger-client-go"
 )
 
 const (
@@ -235,6 +236,10 @@ func (gc *GlobalConfiguration) SetEffectiveConfiguration(configFile string) {
 		} else {
 			gc.Docker.TemplateVersion = 2
 		}
+
+		if gc.Docker.SwarmModeRefreshSeconds <= 0 {
+			gc.Docker.SwarmModeRefreshSeconds = 15
+		}
 	}
 
 	if gc.Marathon != nil {
@@ -331,10 +336,11 @@ func (gc *GlobalConfiguration) initTracing() {
 		case jaeger.Name:
 			if gc.Tracing.Jaeger == nil {
 				gc.Tracing.Jaeger = &jaeger.Config{
-					SamplingServerURL:  "http://localhost:5778/sampling",
-					SamplingType:       "const",
-					SamplingParam:      1.0,
-					LocalAgentHostPort: "127.0.0.1:6831",
+					SamplingServerURL:      "http://localhost:5778/sampling",
+					SamplingType:           "const",
+					SamplingParam:          1.0,
+					LocalAgentHostPort:     "127.0.0.1:6831",
+					TraceContextHeaderName: jaegercli.TraceContextHeaderName,
 				}
 			}
 			if gc.Tracing.Zipkin != nil {
@@ -368,6 +374,7 @@ func (gc *GlobalConfiguration) initTracing() {
 					LocalAgentHostPort: "localhost:8126",
 					GlobalTag:          "",
 					Debug:              false,
+					PrioritySampling:   false,
 				}
 			}
 			if gc.Tracing.Zipkin != nil {
@@ -405,11 +412,11 @@ func (gc *GlobalConfiguration) initACMEProvider() {
 		}
 
 		for _, domain := range gc.ACME.Domains {
-			if domain.Main != lego.UnFqdn(domain.Main) {
+			if domain.Main != dns01.UnFqdn(domain.Main) {
 				log.Warnf("FQDN detected, please remove the trailing dot: %s", domain.Main)
 			}
 			for _, san := range domain.SANs {
-				if san != lego.UnFqdn(san) {
+				if san != dns01.UnFqdn(san) {
 					log.Warnf("FQDN detected, please remove the trailing dot: %s", san)
 				}
 			}

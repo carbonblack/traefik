@@ -19,10 +19,12 @@ import (
 	"github.com/containous/traefik/provider"
 	"github.com/containous/traefik/safe"
 	"github.com/containous/traefik/types"
+	"github.com/patrickmn/go-cache"
 )
 
 var _ provider.Provider = (*Provider)(nil)
-var existingTaskDef = make(map[string]*ecs.TaskDefinition)
+var existingTaskDefCache = cache.New(60*time.Minute, 5*time.Minute)
+
 // Provider holds configurations of the provider.
 type Provider struct {
 	provider.BaseProvider `mapstructure:",squash" export:"true"`
@@ -173,10 +175,10 @@ func (p *Provider) Provide(configurationChan chan<- types.ConfigMessage, pool *s
 			return nil
 		}
 
-		//notify := func(err error, time time.Duration) {
-		//	log.Errorf("Provider connection error %+v, retrying in %s", err, time)
-		//}
-		err := backoff.Retry(safe.OperationWithRecover(operation), job.NewBackOff(backoff.NewExponentialBackOff()))
+		notify := func(err error, time time.Duration) {
+			log.Errorf("Provider connection error %+v, retrying in %s", err, time)
+		}
+		err := backoff.RetryNotify(safe.OperationWithRecover(operation), job.NewBackOff(backoff.NewExponentialBackOff()), notify)
 		if err != nil {
 			log.Errorf("Cannot connect to Provider api %+v", err)
 		}
@@ -269,6 +271,7 @@ func (p *Provider) listInstances(ctx context.Context, client *awsClient) ([]ecsI
 		if err != nil {
 			return nil, err
 		}
+
 		for key, task := range tasks {
 
 			containerInstance := ec2Instances[aws.StringValue(task.ContainerInstanceArn)]
@@ -290,7 +293,7 @@ func (p *Provider) listInstances(ctx context.Context, client *awsClient) ([]ecsI
 				}
 
 				var mach *machine
-				if aws.StringValue(task.LaunchType) == ecs.LaunchTypeFargate {
+				if len(task.Attachments) != 0 {
 					var ports []portMapping
 					for _, mapping := range containerDefinition.PortMappings {
 						if mapping != nil {
@@ -307,30 +310,16 @@ func (p *Provider) listInstances(ctx context.Context, client *awsClient) ([]ecsI
 					}
 				} else {
 					var ports []portMapping
-					var privateIP string
-					if len(container.NetworkInterfaces) > 0 {
-						for _, mapping := range containerDefinition.PortMappings {
-							if mapping != nil {
-								ports = append(ports, portMapping{
-									hostPort:      aws.Int64Value(mapping.HostPort),
-									containerPort: aws.Int64Value(mapping.ContainerPort),
-								})
-							}
-						}
-						privateIP = aws.StringValue(container.NetworkInterfaces[0].PrivateIpv4Address)
-					} else {
-						for _, mapping := range container.NetworkBindings {
-							if mapping != nil {
-								ports = append(ports, portMapping{
-									hostPort:      aws.Int64Value(mapping.HostPort),
-									containerPort: aws.Int64Value(mapping.ContainerPort),
-								})
-							}
-							privateIP = aws.StringValue(containerInstance.PrivateIpAddress)
+					for _, mapping := range container.NetworkBindings {
+						if mapping != nil {
+							ports = append(ports, portMapping{
+								hostPort:      aws.Int64Value(mapping.HostPort),
+								containerPort: aws.Int64Value(mapping.ContainerPort),
+							})
 						}
 					}
 					mach = &machine{
-						privateIP: privateIP,
+						privateIP: aws.StringValue(containerInstance.PrivateIpAddress),
 						ports:     ports,
 						state:     aws.StringValue(containerInstance.State.Name),
 					}
@@ -413,25 +402,23 @@ func (p *Provider) lookupEc2Instances(ctx context.Context, client *awsClient, cl
 func (p *Provider) lookupTaskDefinitions(ctx context.Context, client *awsClient, taskDefArns map[string]*ecs.Task) (map[string]*ecs.TaskDefinition, error) {
 	taskDef := make(map[string]*ecs.TaskDefinition)
 	for arn, task := range taskDefArns {
-		if definition, ok := existingTaskDef[arn]; ok {
-			taskDef[arn] = definition
-			log.Debugf("Found existing task definition for %s. Skipping the call", arn)
+		if definition, ok := existingTaskDefCache.Get(arn); ok {
+			taskDef[arn] = definition.(*ecs.TaskDefinition)
+			log.Debugf("Found cached task definition for %s. Skipping the call", arn)
 		} else {
 			resp, err := client.ecs.DescribeTaskDefinitionWithContext(ctx, &ecs.DescribeTaskDefinitionInput{
 				TaskDefinition: task.TaskDefinitionArn,
 			})
 
 			if err != nil {
-				if !strings.Contains(err.Error(), "ThrottlingException") {
-					log.Errorf("Unable to describe task definition: %s", err)
-				}
+				log.Errorf("Unable to describe task definition: %s", err)
 				return nil, err
 			}
-			taskDef[arn] = resp.TaskDefinition
-		}
 
+			taskDef[arn] = resp.TaskDefinition
+			existingTaskDefCache.Set(arn, resp.TaskDefinition, cache.DefaultExpiration)
+		}
 	}
-	existingTaskDef = taskDef
 	return taskDef, nil
 }
 

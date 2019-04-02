@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/containous/flaeg"
-	"github.com/containous/traefik-extra-service-fabric"
+	servicefabric "github.com/containous/traefik-extra-service-fabric"
 	"github.com/containous/traefik/api"
 	"github.com/containous/traefik/configuration"
 	"github.com/containous/traefik/middlewares/accesslog"
@@ -224,10 +224,11 @@ func NewTraefikDefaultPointersConfiguration() *TraefikConfiguration {
 		ServiceName:   "traefik",
 		SpanNameLimit: 0,
 		Jaeger: &jaeger.Config{
-			SamplingServerURL:  "http://localhost:5778/sampling",
-			SamplingType:       "const",
-			SamplingParam:      1.0,
-			LocalAgentHostPort: "127.0.0.1:6831",
+			SamplingServerURL:      "http://localhost:5778/sampling",
+			SamplingType:           "const",
+			SamplingParam:          1.0,
+			LocalAgentHostPort:     "127.0.0.1:6831",
+			TraceContextHeaderName: "uber-trace-id",
 		},
 		Zipkin: &zipkin.Config{
 			HTTPEndpoint: "http://localhost:9411/api/v1/spans",
@@ -239,6 +240,7 @@ func NewTraefikDefaultPointersConfiguration() *TraefikConfiguration {
 			LocalAgentHostPort: "localhost:8126",
 			GlobalTag:          "",
 			Debug:              false,
+			PrioritySampling:   false,
 		},
 	}
 
