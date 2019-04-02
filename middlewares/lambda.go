@@ -14,8 +14,8 @@ import (
 	"github.com/containous/traefik/log"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"strconv"
+	"reflect"
 )
 
 // Lambda
@@ -77,20 +77,7 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 	req, resp := svc.InvokeRequest(input)
 	err = req.Send()
-	originalRW := rw
-	ok := false
-	rwField := reflect.Indirect(reflect.ValueOf(rw)).FieldByName("RW")
-
-	if rwField.IsValid() {
-		originalRW, ok = rwField.Interface().(retryResponseWriter)
-	}
-	if !ok {
-		originalRW, ok = rw.(retryResponseWriter)
-	}
-	if ok {
-		originalRW.(retryResponseWriter).DisableRetries()
-	}
-
+	disableRetries(rw)
 	if err != nil {
 		aerr := err.(awserr.Error)
 		tracing.LogResponseCode(tracing.GetSpan(r), 400)
@@ -117,4 +104,29 @@ func (l *Lambda) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(statusCode)
 	rw.Write(resp.Payload)
 	return
+}
+
+func findRetryRW(rw reflect.Value) (reflect.Value) {
+	for _, field := range []string{"RW", "W"} {
+		reflectField := reflect.Indirect(rw.Elem()).FieldByName(field)
+		if reflectField.IsValid() {
+			return findRetryRW(reflectField)
+		}
+	}
+	return rw
+}
+
+func disableRetries(rw http.ResponseWriter) {
+	_rw := rw
+	ok := false
+	var retryRW = findRetryRW(reflect.ValueOf(rw))
+	if retryRW.IsValid() {
+		_rw, ok = retryRW.Interface().(retryResponseWriter)
+	}
+	if !ok {
+		_rw, ok = rw.(retryResponseWriter)
+	}
+	if ok {
+		_rw.(retryResponseWriter).DisableRetries()
+	}
 }
